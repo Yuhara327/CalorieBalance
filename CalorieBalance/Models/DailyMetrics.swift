@@ -7,7 +7,7 @@
 
 import Foundation
 
-struct CalorieData: Identifiable {
+struct DailyMetrics: Identifiable {
     let id = UUID()
     let date: Date
     let activeCalories: Double
