@@ -16,7 +16,7 @@ enum HealthKitError: Error {
 class HealthKitManager {
     private let healthStore = HKHealthStore()
     
-    func requestAuthorization() {
+    func requestAuthorization() async throws{
         let typesToShare: Set<HKSampleType> = []
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
@@ -24,11 +24,7 @@ class HealthKitManager {
             HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
         ]
         
-        healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead){ (success, error) in
-            if let error = error {
-                print("HealthKit authorization failed with error: \(error)")
-            }
-        }
+        try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
     
     //fetchStatisticsCollectionから辞書型を持ってきて、まとめてCalorieDataクラスの形にして返す。
@@ -36,11 +32,11 @@ class HealthKitManager {
         let calendar = Calendar.current
         let anchorDate = calendar.startOfDay(for: startDate)
         let interval = DateComponents(day: 1)
-        let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: .strictStartDate)
+        let predicate = HKQuery.predicateForSamples(withStart: anchorDate, end: endDate, options: .strictStartDate)
         
-        async let activeDict = fetchStatisticsCollection(for: .activeEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: startDate, endDate: endDate)
-        async let restingDict = fetchStatisticsCollection(for: .basalEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: startDate, endDate: endDate)
-        async let dietaryDict = fetchStatisticsCollection(for: .dietaryEnergyConsumed, predicate: predicate, anchor: anchorDate, interval: interval, startDate: startDate, endDate: endDate)
+        async let activeDict = fetchStatisticsCollection(for: .activeEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let restingDict = fetchStatisticsCollection(for: .basalEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let dietaryDict = fetchStatisticsCollection(for: .dietaryEnergyConsumed, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         
         let active = try await activeDict
         let resting = try await restingDict
