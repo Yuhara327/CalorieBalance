@@ -23,9 +23,19 @@ struct ContentView: View {
                         .padding()
                 }
                 else {
-                    List(viewModel.dailyData, id: \.date) { data in
-                        DailyCalorieRow(data: data)
+                    List {
+                        // セクションのヘッダーとして配置するか、単純に最初の行として置く
+                        Section {
+                            ForEach(viewModel.dailyData, id: \.date) { data in
+                                DailyCalorieRow(data: data)
+                            }
+                        } header: {
+                            // ここに置くと、リストと一緒にスクロールされます
+                            SummaryHeaderView(data: viewModel.dailyData)
+                                .listRowInsets(EdgeInsets()) // 余計な空白を消す
+                        }
                     }
+                    .listStyle(InsetGroupedListStyle()) // iOS標準らしい見た目になります}
                 }
             }
             .navigationTitle("カロリーバランス")
@@ -37,6 +47,7 @@ struct ContentView: View {
     }
 }
 
+//日次のリスト
 struct DailyCalorieRow: View {
     let data: CalorieData
     
@@ -88,6 +99,36 @@ struct DailyCalorieRow: View {
         formatter.dateStyle = .medium
         formatter.timeStyle = .none
         return formatter.string(from: date)
+    }
+}
+
+struct SummaryHeaderView: View {
+    let data: [CalorieData]
+    
+    private var totalNet: Double {
+        data.reduce(0) { $0 + $1.netCalories }
+    }
+    
+    private var kg: Double {
+        totalNet / 7200.0
+    }
+    
+    var body: some View {
+        VStack(spacing:8) {
+            Text("期間内の収支")
+                .font(.caption)
+                .foregroundColor(.secondary)
+            Text("\(Int(totalNet)) kcal")
+                .font(.title)
+                .foregroundColor(totalNet <= 0 ? .green : .red)
+                .bold()
+            Text(String(format: "脂肪換算で約 %.2f kg %@", abs(kg)))
+                .font(.footnote)
+                .foregroundColor(.secondary)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 20)
+        .background(Color(.systemGroupedBackground))
     }
 }
 

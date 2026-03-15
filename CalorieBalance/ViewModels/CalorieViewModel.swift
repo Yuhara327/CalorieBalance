@@ -25,7 +25,7 @@ class CalorieBalanceViewModel: ObservableObject {
                 
                 let calendar = Calendar.current
                 let endDate = Date()
-                guard let startDate = calendar.date(byAdding: .day, value: -6, to: endDate) else {
+                guard let startDate = calendar.date(byAdding: .day, value: -29, to: endDate) else {
                     isLoading = false
                     return
                 }
