@@ -13,10 +13,10 @@ struct CalorieData: Identifiable {
     let activeCalories: Double
     let restingCalories: Double
     let dietaryCalories: Double
-    var totalCosumedCalories: Double {
+    var totalConsumedCalories: Double {
         return activeCalories + restingCalories
     }
     var netCalories: Double{
-        return totalCosumedCalories - dietaryCalories
+        return totalConsumedCalories - dietaryCalories
     }
 }
