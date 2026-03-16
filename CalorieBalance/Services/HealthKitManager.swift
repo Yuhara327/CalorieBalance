@@ -28,7 +28,7 @@ class HealthKitManager {
     }
     
     //fetchStatisticsCollectionから辞書型を持ってきて、まとめてCalorieDataクラスの形にして返す。
-    func fetchDailyCalories(startDate: Date, endDate: Date) async throws -> [CalorieData] {
+    func fetchDailyCalories(startDate: Date, endDate: Date) async throws -> [DailyMetrics] {
         let calendar = Calendar.current
         let anchorDate = calendar.startOfDay(for: startDate)
         let interval = DateComponents(day: 1)
@@ -42,7 +42,7 @@ class HealthKitManager {
         let resting = try await restingDict
         let dietary = try await dietaryDict
         
-        var results: [CalorieData] = []
+        var results: [DailyMetrics] = []
         var currentDate = anchorDate
         
         while currentDate <= endDate {
@@ -50,7 +50,7 @@ class HealthKitManager {
             let rCal = resting[currentDate] ?? 0.0
             let dCal = dietary[currentDate] ?? 0.0
             
-            let data = CalorieData(
+            let data = DailyMetrics(
                 date: currentDate,
                 activeCalories: aCal,
                 restingCalories: rCal,

@@ -11,36 +11,46 @@ struct ContentView: View {
     @StateObject private var viewModel = CalorieBalanceViewModel()
     
     var body: some View {
-        NavigationView {
+        NavigationStack{
             ZStack {
                 if viewModel.isLoading{
                     ProgressView("データを取得中")
                 }
                 else if let errorMessage = viewModel.errorMessage {
-                    Text(errorMessage)
-                        .foregroundColor(.red)
-                        .multilineTextAlignment(.center)
+                    VStack {
+                        Text(errorMessage)
+                            .foregroundColor(.red)
+                        Button("再試行") {
+                            viewModel.requestAccessAndFetchData()
+                        }
                         .padding()
+                    }
                 }
                 else {
-                    List {
-                        // セクションのヘッダーとして配置するか、単純に最初の行として置く
-                        Section {
-                            ForEach(viewModel.dailyData, id: \.date) { data in
-                                DailyCalorieRow(data: data)
+                    VStack(spacing: 0) {
+                        SummaryHeaderView(viewModel: viewModel)
+                        
+                        Divider()
+                        
+                        List {
+                            if viewModel.filteredData.isEmpty {
+                                ContentUnavailableView("データがありません", systemImage: "calendar.badge.exclamationmark", description: Text("この期間の記録はヘルスケアアプリに見つかりませんでした。"))
+                            } else {
+                                ForEach(viewModel.filteredData) { data in
+                                    DailyCalorieRow(data: data)
+                                }
                             }
-                        } header: {
-                            // ここに置くと、リストと一緒にスクロールされます
-                            SummaryHeaderView(data: viewModel.dailyData)
-                                .listRowInsets(EdgeInsets()) // 余計な空白を消す
                         }
+                        .listStyle(.insetGrouped) // iOS標準らしい見た目になります}
                     }
-                    .listStyle(InsetGroupedListStyle()) // iOS標準らしい見た目になります}
                 }
             }
-            .navigationTitle("カロリーバランス")
-            
+            .navigationTitle("Daily")
+            .toolbarTitleDisplayMode(.inlineLarge)
             .task {
+                viewModel.requestAccessAndFetchData()
+            }
+            .refreshable {
                 viewModel.requestAccessAndFetchData()
             }
         }
@@ -49,10 +59,10 @@ struct ContentView: View {
 
 //日次のリスト
 struct DailyCalorieRow: View {
-    let data: CalorieData
+    let data: DailyMetrics
     
     var body: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        VStack(alignment: .leading, spacing: 5) {
             Text(formatDate(data.date))
                 .font(.headline)
             
@@ -90,7 +100,7 @@ struct DailyCalorieRow: View {
                 }
             }
         }
-        .padding(.vertical)
+        .padding(.vertical, 5)
     }
     
     private func formatDate(_ date: Date) -> String {
@@ -103,32 +113,59 @@ struct DailyCalorieRow: View {
 }
 
 struct SummaryHeaderView: View {
-    let data: [CalorieData]
-    
-    private var totalNet: Double {
-        data.reduce(0) { $0 + $1.netCalories }
-    }
+    @ObservedObject var viewModel: CalorieBalanceViewModel
     
     private var kg: Double {
-        totalNet / 7200.0
+        viewModel.totalNetCalories / 7200.0
     }
     
     var body: some View {
-        VStack(spacing:8) {
-            Text("期間内の収支")
-                .font(.caption)
-                .foregroundColor(.secondary)
-            Text("\(Int(totalNet)) kcal")
-                .font(.title)
-                .foregroundColor(totalNet <= 0 ? .green : .red)
-                .bold()
-            Text(String(format: "脂肪換算で約 %.2f kg %@", abs(kg)))
-                .font(.footnote)
-                .foregroundColor(.secondary)
+        VStack(spacing: 10) {
+            
+            HStack{
+                Text("開始日")
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                Spacer()
+                DatePicker("", selection: $viewModel.dietStartDate, displayedComponents: .date)
+                    .labelsHidden()
+                    .onChange(of: viewModel.dietStartDate) {
+                        viewModel.requestAccessAndFetchData()
+                    }
+            }
+            .padding(.horizontal)
+            VStack(spacing: 5) {
+                Text("\(Int(viewModel.totalNetCalories)) kcal")
+                    .font(.title)
+                    .foregroundColor(viewModel.totalNetCalories <= 0 ? .green : .red)
+                    .bold()
+                Text(String(format: "脂肪換算で約 %.2f kg", abs(kg)))
+                    .font(.footnote)
+                    .foregroundColor(.secondary)
+            }
+            HStack {
+                Button(action: { viewModel.changeMonth(by: -1)}) {
+                    Image(systemName: "chevron.left.circle.fill")
+                        .font(.title2)
+                }
+                Spacer()
+                Text(formatMonth(viewModel.selectedMonth))
+                    .font(.headline)
+                Spacer()
+                Button(action: { viewModel.changeMonth(by: 1)}) {
+                    Image(systemName: "chevron.right.circle.fill")
+                        .font(.headline)
+                }
+            }
+            .padding(.horizontal)
         }
-        .frame(maxWidth: .infinity)
         .padding(.vertical, 20)
         .background(Color(.systemGroupedBackground))
+    }
+        private func formatMonth(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "yyyy年MM月"
+        return formatter.string(from: date)
     }
 }
 
