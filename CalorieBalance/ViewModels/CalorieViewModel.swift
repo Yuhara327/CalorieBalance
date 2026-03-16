@@ -29,7 +29,10 @@ class CalorieBalanceViewModel: ObservableObject {
     
     //開始日から今日までの通算収支
     var totalNetCalories: Double {
-        allData.filter { $0.date >= dietStartDate }.reduce(0) { $0 + $1.netCalories }
+        allData
+            .filter { $0.date >= dietStartDate } // ダイエット開始日以降に絞る
+            .compactMap { $0.netCalories }       // netCalories が nil の要素を除外（Double? -> Double）
+            .reduce(0, +)
     }
     //selectedMonthに該当するデータを抽出
     var filteredData: [DailyMetrics] {

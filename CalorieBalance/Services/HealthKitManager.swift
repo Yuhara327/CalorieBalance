@@ -16,7 +16,7 @@ enum HealthKitError: Error {
 class HealthKitManager {
     private let healthStore = HKHealthStore()
     
-    func requestAuthorization() async throws{
+    func requestAuthorization() async throws {
         let typesToShare: Set<HKSampleType> = []
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
@@ -27,7 +27,6 @@ class HealthKitManager {
         try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
     
-    //fetchStatisticsCollectionから辞書型を持ってきて、まとめてCalorieDataクラスの形にして返す。
     func fetchDailyCalories(startDate: Date, endDate: Date) async throws -> [DailyMetrics] {
         let calendar = Calendar.current
         let anchorDate = calendar.startOfDay(for: startDate)
@@ -46,9 +45,9 @@ class HealthKitManager {
         var currentDate = anchorDate
         
         while currentDate <= endDate {
-            let aCal = active[currentDate] ?? 0.0
-            let rCal = resting[currentDate] ?? 0.0
-            let dCal = dietary[currentDate] ?? 0.0
+            let aCal = active[currentDate] ?? nil
+            let rCal = resting[currentDate] ?? nil
+            let dCal = dietary[currentDate] ?? nil
             
             let data = DailyMetrics(
                 date: currentDate,
@@ -65,24 +64,28 @@ class HealthKitManager {
         return results
     }
     
-    //heatlhkitから日次データを取得する関数。何を取ってくるかを渡して、辞書で返す
-    private func fetchStatisticsCollection(for identifier: HKQuantityTypeIdentifier, predicate: NSPredicate, anchor: Date, interval: DateComponents, startDate: Date, endDate: Date) async throws -> [Date: Double] {
+    private func fetchStatisticsCollection(for identifier: HKQuantityTypeIdentifier, predicate: NSPredicate, anchor: Date, interval: DateComponents, startDate: Date, endDate: Date) async throws -> [Date: Double?] {
         guard let quantityType = HKObjectType.quantityType(forIdentifier: identifier) else {
             throw HealthKitError.typeInitializationFailed
         }
         
-        return try await withCheckedThrowingContinuation{ continuation in
+        return try await withCheckedThrowingContinuation { continuation in
             let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum, anchorDate: anchor, intervalComponents: interval)
             
-            query.initialResultsHandler = {_, collection, error in
+            query.initialResultsHandler = { _, collection, error in
                 if let error = error {
                     continuation.resume(throwing: HealthKitError.queryFailed(error))
                     return
                 }
-                var dailySums: [Date: Double] = [:]
+                
+                var dailySums: [Date: Double?] = [:]
                 collection?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
-                    let sum = statistics.sumQuantity()?.doubleValue(for: .kilocalorie()) ?? 0.0
-                    dailySums[statistics.startDate] = sum
+                    // statistics.sumQuantity() が nil なら、その期間のデータは存在しない
+                    if let sum = statistics.sumQuantity() {
+                        dailySums[statistics.startDate] = sum.doubleValue(for: .kilocalorie())
+                    } else {
+                        dailySums[statistics.startDate] = nil // 明示的にnilを代入
+                    }
                 }
                 
                 continuation.resume(returning: dailySums)

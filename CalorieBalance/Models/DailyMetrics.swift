@@ -6,17 +6,40 @@
 //
 
 import Foundation
+import SwiftUI
 
-struct DailyMetrics: Identifiable {
+struct DailyMetrics: Identifiable, Hashable {
     let id = UUID()
     let date: Date
-    let activeCalories: Double
-    let restingCalories: Double
-    let dietaryCalories: Double
-    var totalBurnedCalories: Double {
-        return activeCalories + restingCalories
+    let activeCalories: Double?
+    let restingCalories: Double?
+    let dietaryCalories: Double?
+    var steps: Int? = nil
+    var sleepSeconds: Double? = nil
+    var weight: Double? = nil
+    
+    var totalBurnedCalories: Double? {
+        guard let active = activeCalories, let resting = restingCalories else { return nil }
+        return active + resting
     }
-    var netCalories: Double{
-        return dietaryCalories - totalBurnedCalories
+    
+    var netCalories: Double? {
+        guard let dietary = dietaryCalories, let totalBurned = totalBurnedCalories else { return nil }
+        return dietary - totalBurned
+    }
+    
+    func hash(into hasher: inout Hasher) {
+        hasher.combine(id)
+    }
+    
+    static func == (lhs: DailyMetrics, rhs: DailyMetrics) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
+extension DailyMetrics {
+    var netColor: Color {
+        guard let net = netCalories else { return .secondary }
+        return net <= 0 ? .green : .red
     }
 }
