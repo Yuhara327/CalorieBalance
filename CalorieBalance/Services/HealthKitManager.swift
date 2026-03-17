@@ -21,7 +21,10 @@ class HealthKitManager {
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .basalEnergyBurned)!,
-            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!
+            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
+            HKObjectType.quantityType(forIdentifier: .stepCount)!,
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!,
+            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
         ]
         
         try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
@@ -33,13 +36,19 @@ class HealthKitManager {
         let interval = DateComponents(day: 1)
         let predicate = HKQuery.predicateForSamples(withStart: anchorDate, end: endDate, options: .strictStartDate)
         
-        async let activeDict = fetchStatisticsCollection(for: .activeEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
-        async let restingDict = fetchStatisticsCollection(for: .basalEnergyBurned, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
-        async let dietaryDict = fetchStatisticsCollection(for: .dietaryEnergyConsumed, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let activeDict = fetchStatisticsCollection(for: .activeEnergyBurned, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let restingDict = fetchStatisticsCollection(for: .basalEnergyBurned, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let dietaryDict = fetchStatisticsCollection(for: .dietaryEnergyConsumed, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let stepDict = fetchStatisticsCollection(for: .stepCount, unit: .count(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        async let sleepDict = fetchSleepDuration(start: anchorDate, end: endDate)
+        async let massDict = fetchStatisticsCollection(for: .bodyMass, unit: .gramUnit(with: .kilo), options: .mostRecent, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         
         let active = try await activeDict
         let resting = try await restingDict
         let dietary = try await dietaryDict
+        let step = try await stepDict
+        let sleep = try await sleepDict
+        let mass = try await massDict
         
         var results: [DailyMetrics] = []
         var currentDate = anchorDate
@@ -48,12 +57,18 @@ class HealthKitManager {
             let aCal = active[currentDate] ?? nil
             let rCal = resting[currentDate] ?? nil
             let dCal = dietary[currentDate] ?? nil
+            let stepCount = step[currentDate].flatMap { Int($0)} ?? nil
+            let sleepAnalysis = sleep[currentDate] ?? nil
+            let bodyMass = mass[currentDate] ?? nil
             
             let data = DailyMetrics(
                 date: currentDate,
                 activeCalories: aCal,
                 restingCalories: rCal,
-                dietaryCalories: dCal
+                dietaryCalories: dCal,
+                steps: stepCount,
+                sleepSeconds: sleepAnalysis,
+                weight: bodyMass,
             )
             results.append(data)
             
@@ -64,13 +79,22 @@ class HealthKitManager {
         return results
     }
     
-    private func fetchStatisticsCollection(for identifier: HKQuantityTypeIdentifier, predicate: NSPredicate, anchor: Date, interval: DateComponents, startDate: Date, endDate: Date) async throws -> [Date: Double?] {
+    private func fetchStatisticsCollection(
+        for identifier: HKQuantityTypeIdentifier,
+        unit: HKUnit,
+        options: HKStatisticsOptions,//オプションで合計か最新値かを選ぶ
+        predicate: NSPredicate,
+        anchor: Date,
+        interval: DateComponents,
+        startDate: Date,
+        endDate: Date
+    ) async throws -> [Date: Double] {
         guard let quantityType = HKObjectType.quantityType(forIdentifier: identifier) else {
             throw HealthKitError.typeInitializationFailed
         }
         
         return try await withCheckedThrowingContinuation { continuation in
-            let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: .cumulativeSum, anchorDate: anchor, intervalComponents: interval)
+            let query = HKStatisticsCollectionQuery(quantityType: quantityType, quantitySamplePredicate: predicate, options: options, anchorDate: anchor, intervalComponents: interval)
             
             query.initialResultsHandler = { _, collection, error in
                 if let error = error {
@@ -78,19 +102,36 @@ class HealthKitManager {
                     return
                 }
                 
-                var dailySums: [Date: Double?] = [:]
+                var dailySums: [Date: Double] = [:]
                 collection?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
-                    // statistics.sumQuantity() が nil なら、その期間のデータは存在しない
-                    if let sum = statistics.sumQuantity() {
-                        dailySums[statistics.startDate] = sum.doubleValue(for: .kilocalorie())
-                    } else {
-                        dailySums[statistics.startDate] = nil // 明示的にnilを代入
+                    let quantity = (options == .cumulativeSum) ? statistics.sumQuantity() : statistics.mostRecentQuantity()
+                    //データがある時だけ辞書に入れる
+                    if let quantity = quantity {
+                        dailySums[statistics.startDate] = quantity.doubleValue(for: unit)
                     }
                 }
                 
                 continuation.resume(returning: dailySums)
             }
             
+            healthStore.execute(query)
+        }
+    }
+    private func fetchSleepDuration(start: Date, end: Date) async throws -> [Date: Double] {
+        let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        return try await withCheckedThrowingContinuation { con in
+            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, err in
+                if let err = err { con.resume(throwing: err); return }
+                var dict: [Date: Double] = [:]
+                (samples as? [HKCategorySample])?.forEach { s in
+                    if s.value != HKCategoryValueSleepAnalysis.inBed.rawValue && s.value != HKCategoryValueSleepAnalysis.awake.rawValue {
+                        let day = Calendar.current.startOfDay(for: s.startDate)
+                        dict[day, default: 0] += s.endDate.timeIntervalSince(s.startDate)
+                    }
+                }
+                con.resume(returning: dict)
+            }
             healthStore.execute(query)
         }
     }

@@ -81,6 +81,13 @@ struct DayDetailView: View {
                                 value: metrics.steps != nil ? String(format: "%i 歩", metrics.steps!) : "データなし",
                                 color: .orange
                             )
+                            
+                            Divider().padding(.horizontal, panelPadding)
+
+                            healthRow(icon: "scalemass.fill",
+                                      title: "体重",
+                                      value: metrics.weight != nil ? String(format:"%.1f kg", metrics.weight!) : "データなし",
+                                      color: .teal)
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
                     }
@@ -161,13 +168,12 @@ struct DayDetailView: View {
         date: Date(),
         activeCalories: 600,
         restingCalories: 1500,
-        dietaryCalories: 1800
+        dietaryCalories: 1800,
+        steps: 10240,
+        sleepSeconds: 27000,
+        weight: 50.5
     )
-    var metrics = sample
-    metrics.steps = 10240
-    metrics.sleepSeconds = 27000
-    
     return NavigationStack {
-        DayDetailView(metrics: metrics)
+        DayDetailView(metrics: sample)
     }
 }

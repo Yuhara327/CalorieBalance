@@ -14,9 +14,9 @@ struct DailyMetrics: Identifiable, Hashable {
     let activeCalories: Double?
     let restingCalories: Double?
     let dietaryCalories: Double?
-    var steps: Int? = nil
-    var sleepSeconds: Double? = nil
-    var weight: Double? = nil
+    let steps: Int?
+    let sleepSeconds: Double?
+    let weight: Double?
     
     var totalBurnedCalories: Double? {
         guard let active = activeCalories, let resting = restingCalories else { return nil }

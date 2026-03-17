@@ -19,26 +19,30 @@ struct AdvancedBackgroundView: View {
             // 左上のインディゴ
             RadialGradient(
                 gradient: Gradient(colors: [
-                    Color.indigo.opacity(colorScheme == .dark ? 1.0 : 1.0), // ダークモード時は少し抑える
+                    Color.indigo.opacity(colorScheme == .dark ? 0.5 : 5.0), // ダークモード時は少し抑える
                     Color(.systemBackground).opacity(0.0) // 溶ける先も背景色に合わせる
                 ]),
                 center: .topLeading,
                 startRadius: 0,
-                endRadius: 800
+                endRadius: 1100
             )
             .ignoresSafeArea()
             
             // 右上のグリーン
             RadialGradient(
                 gradient: Gradient(colors: [
-                    Color.green.opacity(colorScheme == .dark ? 0.5 : 0.5),
+                    Color.green.opacity(colorScheme == .dark ? 0.3 : 0.7),
                     Color(.systemBackground).opacity(0.0)
                 ]),
                 center: .topTrailing,
                 startRadius: 0,
-                endRadius: 800
+                endRadius: 1100
             )
             .ignoresSafeArea()
         }
     }
+}
+
+#Preview {
+    ContentView()
 }
