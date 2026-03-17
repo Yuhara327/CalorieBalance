@@ -44,5 +44,5 @@ struct AdvancedBackgroundView: View {
 }
 
 #Preview {
-    ContentView()
+    AdvancedBackgroundView()
 }

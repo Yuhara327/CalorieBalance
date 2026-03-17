@@ -43,3 +43,10 @@ extension DailyMetrics {
         return net <= 0 ? .green : .red
     }
 }
+
+extension DailyMetrics {
+    // 脂肪換算の計算（1kg = 7200kcal）
+    var fatEquivalentKg: Double {
+        abs((netCalories ?? 0) / 7200.0)
+    }
+}
