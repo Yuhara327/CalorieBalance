@@ -20,7 +20,17 @@ struct DayDetailView: View {
             
             ScrollView {
                 VStack(spacing: 28) {
-                    
+                    // データが存在する場合のみ、HStack全体を描画する
+                    if let net = metrics.netCalories {
+                        HStack {
+                            Label("脂肪換算で", systemImage: "barometer")
+                            // すでに DailyMetrics で定義した extension を活用
+                            Text("\(abs(metrics.fatEquivalentGram), specifier: "%.2f") g")
+                            Text(net >= 0 ? "蓄積しました。" : "燃焼しました！")
+                        }
+                        .font(.title3)
+                        .bold()
+                    }
                     // --- セクション1：エネルギー ---
                     VStack(alignment: .leading, spacing: 12) {
                         sectionHeader("エネルギー")
@@ -30,28 +40,28 @@ struct DayDetailView: View {
                             energyRow(
                                 icon: "chart.bar.fill",
                                 title: "収支",
-                                value: metrics.netCalories != nil ? String(format: "%.0f kcal", metrics.netCalories!) : "データなし",
+                                value: metrics.netCalories.map { String(format: "%.0f kcal", $0) } ?? "データなし",
                                 color: metrics.netColor,
                                 isLarge: true
                             )
-                            
+
                             Divider().padding(.horizontal, panelPadding)
-                            
+
                             // 消費
                             energyRow(
                                 icon: "flame.fill",
                                 title: "消費",
-                                value: metrics.totalBurnedCalories != nil ? String(format: "%.0f kcal", metrics.totalBurnedCalories!) : "データなし",
+                                value: metrics.totalBurnedCalories.map { String(format: "%.0f kcal", $0) } ?? "データなし",
                                 color: .green
                             )
-                            
+
                             Divider().padding(.horizontal, panelPadding)
-                            
+
                             // 摂取
                             energyRow(
                                 icon: "carrot.fill",
                                 title: "摂取",
-                                value: metrics.dietaryCalories != nil ? String(format: "%.0f kcal", metrics.dietaryCalories!) : "データなし",
+                                value: metrics.dietaryCalories.map { String(format: "%.0f kcal", $0) } ?? "データなし",
                                 color: .red
                             )
                         }
@@ -91,7 +101,7 @@ struct DayDetailView: View {
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
                     }
-                    
+                                        
                     // 最下部の視覚的バッファ
                     Color.clear.frame(height: 40)
                 }

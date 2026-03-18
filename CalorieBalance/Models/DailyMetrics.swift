@@ -45,8 +45,8 @@ extension DailyMetrics {
 }
 
 extension DailyMetrics {
-    // 脂肪換算の計算（1kg = 7200kcal）
-    var fatEquivalentKg: Double {
-        abs((netCalories ?? 0) / 7200.0)
+    // 脂肪換算の計算（1000g = 7200kcal）
+    var fatEquivalentGram: Double {
+        abs((netCalories ?? 0) / 7.2)
     }
 }
