@@ -67,5 +67,5 @@ struct DailyView: View {
     }
 }
 #Preview {
-    DailyView(viewModel: CalorieBalanceViewModel())
+    DailyView(viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData))
 }

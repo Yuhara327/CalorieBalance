@@ -12,6 +12,7 @@ struct SummaryHeaderView: View {
     private var totalFatEquivalent: Double {
             abs(viewModel.totalNetCalories / 7200.0)
         }
+    var showMonthPicker: Bool  = true
     
     var body: some View {
         VStack(spacing: 10) {
@@ -33,19 +34,20 @@ struct SummaryHeaderView: View {
                 Text(String(format: "脂肪換算で約 %.2f kg", abs(totalFatEquivalent)))
                     .font(.footnote).foregroundColor(.secondary)
             }
-            
-            HStack {
-                Button(action: { viewModel.changeMonth(by: -1) }) {
-                    Image(systemName: "chevron.left.circle.fill").font(.title2)
+            if showMonthPicker {
+                HStack {
+                    Button(action: { viewModel.changeMonth(by: -1) }) {
+                        Image(systemName: "chevron.left.circle.fill").font(.title2).foregroundColor(.teal)
+                    }
+                    Spacer()
+                    Text(formatMonth(viewModel.selectedMonth)).font(.headline)
+                    Spacer()
+                    Button(action: { viewModel.changeMonth(by: 1) }) {
+                        Image(systemName: "chevron.right.circle.fill").font(.title2).foregroundColor(.teal)
+                    }
                 }
-                Spacer()
-                Text(formatMonth(viewModel.selectedMonth)).font(.headline)
-                Spacer()
-                Button(action: { viewModel.changeMonth(by: 1) }) {
-                    Image(systemName: "chevron.right.circle.fill").font(.title2)
-                }
+                .padding(.horizontal)
             }
-            .padding(.horizontal)
         }
         .padding(.vertical, 20)
         
@@ -59,5 +61,5 @@ struct SummaryHeaderView: View {
 }
 
 #Preview {
-    SummaryHeaderView(viewModel: CalorieBalanceViewModel())
+    SummaryHeaderView(viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData))
 }

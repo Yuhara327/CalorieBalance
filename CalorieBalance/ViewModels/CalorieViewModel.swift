@@ -42,7 +42,33 @@ class CalorieBalanceViewModel: ObservableObject {
         }.sorted(by: {$0.date > $1.date})
     }
     
+    func calculateWeightTrend(from startDate: Date) -> [WeightChartData] {
+        //データを日付で昇順に
+        let trendData = allData
+            .filter { $0.date >= startDate}
+            .sorted { $0.date < $1.date}
+        
+        guard let firstValidData = trendData.first(where: { $0.weight != nil }),
+              let baseWeight = firstValidData.weight else {
+            return[]
+        }
+        
+        var cumulativeNet = 0.0
+        return trendData.map { data in
+            if let net = data.netCalories {
+                cumulativeNet += net
+            }
+            let predictedWeight = baseWeight + (cumulativeNet / 7200.0)
+            
+            return WeightChartData(date: data.date, actualWeight: data.weight, predictedWeight: predictedWeight)
+        }
+    }
+    
     func requestAccessAndFetchData(customStartDate: Date? = nil) {
+        if isPreview { return }
+        if let customStart = customStartDate, let currentOldest = initialFetchDate, customStart >= currentOldest {
+                return
+            }
         Task {
             isLoading = true
             let fetchStart = min(customStartDate ?? dietStartDate, initialFetchDate ?? dietStartDate)// ややこしいが、とにかくロードしなきゃいけない最古の日を記録してる
@@ -72,6 +98,27 @@ class CalorieBalanceViewModel: ObservableObject {
                     requestAccessAndFetchData(customStartDate: startOfNewMonth)
                 }
             }
+        }
+    }
+    
+    
+    
+    
+    //プレビューよう
+    private let isPreview: Bool
+    
+    // 修正: イニシャライザを追加し、プレビューデータを注入できるようにする
+    init(previewData: [DailyMetrics]? = nil) {
+        if let data = previewData {
+            // プレビューデータが渡された場合
+            self.allData = data
+            self.isPreview = true
+            self.isLoading = false
+            // プレビュー時は30日前を開始日にセットしておく
+            self.dietStartDateInterval = Calendar.current.date(byAdding: .day, value: -30, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+        } else {
+            // 通常のアプリ起動時
+            self.isPreview = false
         }
     }
 }
