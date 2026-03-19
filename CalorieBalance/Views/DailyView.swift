@@ -7,8 +7,8 @@
 
 import SwiftUI
 
-struct ContentView: View {
-    @StateObject private var viewModel = CalorieBalanceViewModel()
+struct DailyView: View {
+    @ObservedObject var viewModel: CalorieBalanceViewModel
 
     var body: some View {
         NavigationStack {
@@ -38,7 +38,7 @@ struct ContentView: View {
                                     .padding(4)
                                 }
                                 Color.clear
-                                    .frame(height: 100) // 100pt分の空白
+                                    .frame(height: 80) // 100pt分の空白
                                     .listRowBackground(Color.clear) // 背景を透明に
                                     .listRowSeparator(.hidden)      // 境界線を消す
                             }
@@ -62,11 +62,10 @@ struct ContentView: View {
             }
             .navigationTitle("Daily")
             .toolbarTitleDisplayMode(.inlineLarge)
-            .task { viewModel.requestAccessAndFetchData() }
             .refreshable { viewModel.requestAccessAndFetchData() }
         }
     }
 }
 #Preview {
-    ContentView()
+    DailyView(viewModel: CalorieBalanceViewModel())
 }
