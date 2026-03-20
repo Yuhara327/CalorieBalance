@@ -4,6 +4,8 @@
 //
 //  Created by Soichiro Yuhara on 2026/03/16.
 //
+
+// 背景
 import SwiftUI
 
 struct AdvancedBackgroundView: View {

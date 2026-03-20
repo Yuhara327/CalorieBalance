@@ -5,6 +5,8 @@
 //  Created by Soichiro Yuhara on 2026/03/19.
 //
 
+// 体重と予測のグラフ
+
 import SwiftUI
 import Charts
 
@@ -15,7 +17,11 @@ struct WeightTrendChart: View {
 
     var body: some View {
         let trendData = viewModel.calculateWeightTrend(from: graphStartDate)
-        let axisValues = calculateAxisValues(startDate: graphStartDate)
+        // クラッシュ対策1: 範囲の逆転を防止
+        let now = Date()
+        let safeStartDate = min(graphStartDate, now)
+        let axisValues = calculateAxisValues(startDate: safeStartDate)
+        let latestCompleteData = trendData.last { $0.actualWeight != nil && $0.predictedWeight != nil }
 
         VStack(alignment: .leading, spacing: 16) {
             // 凡例（体重専用）
@@ -36,6 +42,7 @@ struct WeightTrendChart: View {
                         if let actual = item.actualWeight {
                             LineMark(x: .value("日付", item.date, unit: .day), y: .value("実測", actual),series: .value("系列", "実測"))
                                 .foregroundStyle(.teal)
+                                .interpolationMethod(.catmullRom)
                             PointMark(x: .value("日付", item.date, unit: .day), y: .value("実測", actual))
                                 .foregroundStyle(.teal).symbolSize(30)
                         }
@@ -47,7 +54,7 @@ struct WeightTrendChart: View {
                 }
                 .chartXSelection(value: $selectedDate)
                 .chartYScale(domain: .automatic(includesZero: false))
-                .chartXScale(domain: graphStartDate...Date())
+                .chartXScale(domain: safeStartDate...now)
                 .chartXAxis {
                     // 自身で計算した axisValues を直接渡す
                     AxisMarks(values: axisValues) { value in
@@ -71,7 +78,7 @@ struct WeightTrendChart: View {
                         AxisGridLine()
                         if let kgValue = value.as(Double.self) {
                             AxisValueLabel {
-                                Text("\(Int(kgValue)) kg")
+                                Text("\(kgValue, format: .number.precision(.fractionLength(0))) kg")
                             }
                         }
                     }
@@ -86,6 +93,35 @@ struct WeightTrendChart: View {
                         }
                     }
                 }
+            }
+            if let data = latestCompleteData,
+                let actual = data.actualWeight,
+                let predicted = data.predictedWeight{
+                let gap = actual - predicted
+                
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 6) {
+                        Image(systemName: "chart.line.uptrend.xyaxis")
+                            .foregroundColor(.teal)
+                        Text("現在のトレンド感")
+                            .font(.headline)
+                    }
+                    
+                    // トレンドの言語化
+                    Text(gap > 0.5 ? "予測を上回る推移（停滞傾向）" : (gap < -0.5 ? "予測を下回る推移（加速傾向）" : "予測通りの安定した推移"))
+                        .font(.subheadline)
+                        .bold()
+                        .foregroundColor(gap > 0.5 ? .orange : (gap < -0.5 ? .teal : .primary))
+
+                    // iOS 26.0 以降の推奨される書き方
+                    // 1つの Text 内で \(...) を使い、各要素に .bold() などを直接指定する
+                    Text("理論上の予測体重に対し、現在は実測値が \(Text(String(format: "%+.2f kg", gap)).bold()) 乖離しています。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color.secondary.opacity(0.1))
+                .cornerRadius(12)
             }
         }
     }
@@ -126,7 +162,7 @@ struct WeightTrendChart: View {
     private func calculateAxisValues(startDate: Date) -> [Date] {
         let calendar = Calendar.current
         var dates: [Date] = []
-        var currentDate = calendar.startOfDay(for: graphStartDate)
+        var currentDate = calendar.startOfDay(for: startDate)
         let endDate = calendar.startOfDay(for: Date())
         let daysCount = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 30
         let dynamicStride: Int = {
@@ -139,24 +175,35 @@ struct WeightTrendChart: View {
         while currentDate <= endDate {
             let day = calendar.component(.day, from: currentDate)
             
-            // 1日は無条件に追加
             if day == 1 {
                 dates.append(currentDate)
-            }
-            // 指定の間隔（5, 10...）の場合
-            else if day % dynamicStride == 0 {
-                // 前後の日付を確認し、1日と近すぎる（例：2日前後、あるいは月末付近）場合は追加しない
-                // これにより「30」と「次月1日」の衝突を防ぐ
-                let isNearMonthEnd = day > 27 // 月末付近の数字は1日と被りやすいので捨てる
-                let isNearMonthStart = day < 3 // 月初付近も同様
-                
+            } else if day % dynamicStride == 0 {
+                let isNearMonthEnd = day > 27
+                let isNearMonthStart = day < 3
                 if !isNearMonthEnd && !isNearMonthStart {
                     dates.append(currentDate)
                 }
             }
             
-            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
+            // 安全な更新：! を避け、万が一 nil の場合はループを抜ける
+            guard let nextDate = calendar.date(byAdding: .day, value: 1, to: currentDate) else {
+                break
+            }
+            currentDate = nextDate
         }
         return dates
     }
+}
+
+
+#Preview {
+    // プレビュー用に一時的な状態を保持する場所がないため、
+    // シンプルに表示を確認するだけなら .constant を使います。
+    WeightTrendChart(
+        viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData),
+        graphStartDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
+        selectedDate: .constant(nil) // Bindingへの暫定対応
+    )
+    .padding()
+    .background(Color.black.opacity(0.1)) // グラフを見やすくするための背景
 }

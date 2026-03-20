@@ -29,8 +29,9 @@ class CalorieBalanceViewModel: ObservableObject {
     
     //開始日から今日までの通算収支
     var totalNetCalories: Double {
-        allData
-            .filter { $0.date >= dietStartDate } // ダイエット開始日以降に絞る
+        let starOfDay = Calendar.current.startOfDay(for: dietStartDate)
+        return allData
+            .filter { $0.date >= starOfDay } // ダイエット開始日以降に絞る
             .compactMap { $0.netCalories }       // netCalories が nil の要素を除外（Double? -> Double）
             .reduce(0, +)
     }
@@ -43,9 +44,10 @@ class CalorieBalanceViewModel: ObservableObject {
     }
     
     func calculateWeightTrend(from startDate: Date) -> [WeightChartData] {
+        let startOfDay = Calendar.current.startOfDay(for: startDate)
         //データを日付で昇順に
         let trendData = allData
-            .filter { $0.date >= startDate}
+            .filter { $0.date >= startOfDay}
             .sorted { $0.date < $1.date}
         
         guard let firstValidData = trendData.first(where: { $0.weight != nil }),
@@ -61,6 +63,34 @@ class CalorieBalanceViewModel: ObservableObject {
             let predictedWeight = baseWeight + (cumulativeNet / 7200.0)
             
             return WeightChartData(date: data.date, actualWeight: data.weight, predictedWeight: predictedWeight)
+        }
+    }
+    
+    func calculateCalorieTrend(from startDate: Date) -> [CalorieChartData] {
+        let startOfDay = Calendar.current.startOfDay(for: startDate)
+        let trendData = allData
+            .filter { $0.date >= startOfDay }
+            .sorted { $0.date < $1.date }
+        
+        var runningSum = 0.0
+        return trendData.map { data in
+            let net = data.netCalories ?? 0.0
+            runningSum += net
+            return CalorieChartData(date: data.date, dailyNet: net, cumulativeNet: runningSum)
+        }
+    }
+    
+    func calculateSleepData(from startDate: Date) -> [SleepChartData] {
+        let startOfDay = Calendar.current.startOfDay(for: startDate)
+        let trendData = allData
+            .filter { $0.date >= startOfDay }
+            .sorted { $0.date < $1.date }
+        return trendData.map { data in
+            let net = data.netCalories ?? 0.0
+            let sleepHours = (data.sleepSeconds ?? 0.0) / 3600.0
+            
+            return SleepChartData(date: data.date, sleep: sleepHours, dailyNet: net)
+            
         }
     }
     

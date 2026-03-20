@@ -5,6 +5,7 @@
 //  Created by Soichiro Yuhara on 2026/03/17.
 //
 
+// Daily画面の一列
 import SwiftUI
 
 // 日次のリスト

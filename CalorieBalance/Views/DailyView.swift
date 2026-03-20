@@ -5,6 +5,8 @@
 //  Created by Soichiro Yuhara on 2026/03/11.
 //
 
+//Daily画面
+
 import SwiftUI
 
 struct DailyView: View {

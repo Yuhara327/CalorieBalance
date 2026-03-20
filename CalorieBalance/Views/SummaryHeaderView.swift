@@ -5,6 +5,8 @@
 //  Created by Soichiro Yuhara on 2026/03/17.
 //
 
+// ヘッダー部分
+
 import SwiftUI
 
 struct SummaryHeaderView: View {

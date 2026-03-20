@@ -4,6 +4,8 @@
 //
 //  Created by Soichiro Yuhara on 2026/03/16.
 //
+
+// 特定の日の詳細
 import SwiftUI
 
 struct DayDetailView: View {

@@ -13,3 +13,17 @@ struct WeightChartData: Identifiable {
     let actualWeight: Double?
     let predictedWeight: Double?
 }
+
+struct CalorieChartData: Identifiable {
+    let id = UUID()
+    let date: Date
+    let dailyNet: Double
+    let cumulativeNet: Double
+}
+
+struct SleepChartData: Identifiable {
+    let id = UUID()
+    let date: Date
+    let sleep: Double
+    let dailyNet: Double
+}
