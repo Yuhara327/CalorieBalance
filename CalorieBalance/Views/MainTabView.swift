@@ -17,14 +17,23 @@ struct MainTabView: View {
             // タブ1：日々のリスト画面
             Tab("Daily", systemImage: "list.bullet.clipboard") {
                 DailyView(viewModel: viewModel)
+                    .tint(nil)
             }
             
             // タブ2：トレンド画面
             Tab("Trends", systemImage: "chart.xyaxis.line") {
                 GraphView(viewModel: viewModel)
+                    .tint(nil)
             }
+            
+            Tab("Goals", systemImage: "flag.fill") {
+                GoalView(viewModel: viewModel)
+                    .tint(nil)
+            }
+
         }
-        .tint(.indigo)
+        .tint(.teal)
+        .toolbarBackground(.visible, for: .tabBar)
         .task {
             viewModel.requestAccessAndFetchData()
         }

@@ -8,12 +8,85 @@ import Foundation
 import Combine
 import SwiftUI
 
+enum DietGoalMode: String, CaseIterable, Identifiable {
+    case lose = "減量"
+    case maintain = "維持"
+    case gain = "増量"
+    var id: String { self.rawValue }
+}
+
 @MainActor
 class CalorieBalanceViewModel: ObservableObject {
     @Published var allData: [DailyMetrics] = []
     @Published var isLoading: Bool = false
     @Published var errorMessage: String?
     @Published var selectedMonth: Date = Date()
+    
+    //目標設定
+    @AppStorage("isGoalSet") var isGoalSet: Bool = false // 目標設定がなされているか
+    @AppStorage("dietGoalMode") var goalMode: DietGoalMode = .lose
+    @AppStorage("targetWeight") var targetWeight: Double = 60.0
+    @AppStorage("targetDateInterval") private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
+    @AppStorage("startingWeight") var startingWeight: Double = 0.0
+    
+    var targetDate: Date {
+            get { Date(timeIntervalSince1970: targetDateInterval) }
+            set { targetDateInterval = newValue.timeIntervalSince1970 }
+        }
+    
+    // 30日以内の最新の体重データを探す
+    var effectiveCurrentWeight: Double {
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
+        let recentWeight = allData
+            .filter { $0.date >= thirtyDaysAgo && $0.weight != nil}
+            .last?.weight
+        
+        return recentWeight ?? (startingWeight > 0 ? startingWeight : targetWeight)
+    }
+    // 日次目標収支の計算
+    var dailyTargetCalories: Double {
+        let diff = targetWeight - effectiveCurrentWeight
+        let totalNeededKcal = diff * 7200.0
+        let days = Calendar.current.dateComponents([.day], from: Date(), to: targetDate).day ?? 1
+        return totalNeededKcal/Double(max(days, 1))
+    }
+    // 今日の目標を達成しているかの判定
+    var isDailyGoalAcheived: Bool {
+        guard let todayData = allData.last(where: { Calendar.current.isDateInToday($0.date) } ),
+              let net = todayData.netCalories else { return false }
+        
+        switch goalMode {
+        case .lose: return net <= dailyTargetCalories
+        case .gain: return net >= dailyTargetCalories
+        case .maintain: return abs(net) <= 200
+        }
+    }
+    
+    // トータルの達成率
+    var achievementRate: Double {
+        guard isGoalSet, startingWeight > 0 else { return 0 }
+        
+        // start を「あの日決めた体重」に固定
+        let start = startingWeight
+        let current = effectiveCurrentWeight
+        let target = targetWeight
+        
+        switch goalMode {
+        case .lose:
+            let total = start - target
+            guard total > 0 else { return current <= target ? 1.0 : 0.0 }
+            return min(max((start - current) / total, 0), 1)
+            
+        case .gain:
+            let total = target - start
+            guard total > 0 else { return current >= target ? 1.0 : 0.0 }
+            return min(max((current - start) / total, 0), 1)
+            
+        case .maintain:
+            // 維持モードは±1.0kg以内なら達成とみなす論理
+            return abs(current - target) <= 1.0 ? 1.0 : 0.0
+        }
+    }
     //開始日の「数字」は端末に保存する
     @AppStorage("dietStartDate") private var dietStartDateInterval : TimeInterval =
         Calendar.current.date(byAdding: .day, value: -29, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970 //便利な条件式である。
@@ -25,7 +98,7 @@ class CalorieBalanceViewModel: ObservableObject {
         set { dietStartDateInterval = newValue.timeIntervalSince1970}
     }
     
-    private let healhKitManager = HealthKitManager()
+    private let healthKitManager = HealthKitManager()
     
     //開始日から今日までの通算収支
     var totalNetCalories: Double {
@@ -103,9 +176,9 @@ class CalorieBalanceViewModel: ObservableObject {
             isLoading = true
             let fetchStart = min(customStartDate ?? dietStartDate, initialFetchDate ?? dietStartDate)// ややこしいが、とにかくロードしなきゃいけない最古の日を記録してる
             do {
-                try await healhKitManager.requestAuthorization()
+                try await healthKitManager.requestAuthorization()
                 
-                let fetched = try await healhKitManager.fetchDailyCalories(startDate: fetchStart, endDate: Date())
+                let fetched = try await healthKitManager.fetchDailyCalories(startDate: fetchStart, endDate: Date())
                 self.allData = fetched
                 self.initialFetchDate = fetchStart
             } catch {
