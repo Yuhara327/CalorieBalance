@@ -17,7 +17,11 @@ class HealthKitManager {
     private let healthStore = HKHealthStore()
     
     func requestAuthorization() async throws {
-        let typesToShare: Set<HKSampleType> = []
+        let typesToShare: Set<HKSampleType> = [
+            HKObjectType.quantityType(forIdentifier: .dietaryEnergyConsumed)!,
+            HKObjectType.quantityType(forIdentifier: .bodyMass)!,
+            HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+        ]
         let typesToRead: Set<HKObjectType> = [
             HKObjectType.quantityType(forIdentifier: .activeEnergyBurned)!,
             HKObjectType.quantityType(forIdentifier: .basalEnergyBurned)!,
@@ -135,4 +139,67 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
+    
+    func saveWeight(weight: Double, date: Date) async throws {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
+        let quantity = HKQuantity(unit: .gramUnit(with: .kilo), doubleValue: weight)
+        let sample = HKQuantitySample(type: type, quantity: quantity, start: date, end: date)
+        try await healthStore.save(sample)
+    }
+    
+    func saveDietaryEnergy(calories: Double, date: Date) async throws {
+        guard let type = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed) else { return }
+        let quantity = HKQuantity(unit: .kilocalorie(), doubleValue: calories)
+        let sample = HKQuantitySample(type: type, quantity: quantity, start: date, end: date)
+        try await healthStore.save(sample)
+    }
+    
+    func saveSleep(start: Date, end: Date) async throws {
+        guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
+        
+        // 修正箇所：.allAsleep ではなく .asleepUnspecified を使用
+        let sample = HKCategorySample(
+            type: sleepType,
+            value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
+            start: start,
+            end: end
+        )
+        
+        try await healthStore.save(sample)
+    }
+    
+    // MARK: - データの削除
+        
+    /// 指定した日の、このアプリが記録した「数値データ（カロリー・体重など）」を削除
+    func deleteQuantityData(for identifier: HKQuantityTypeIdentifier, on date: Date) async throws {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return }
+        
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        
+        // 条件1：対象の日付
+        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+        // 条件2：このアプリ（自分自身）が書き込んだデータのみ
+        let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
+        
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
+        
+        // 条件に合致するデータをHealthKitから削除
+        try await healthStore.deleteObjects(of: type, predicate: predicate)
+    }
+
+    /// 指定した日の、このアプリが記録した「睡眠データ」を削除
+    func deleteSleepData(on date: Date) async throws {
+        guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
+        
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        
+        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+        let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
+        
+        try await healthStore.deleteObjects(of: type, predicate: predicate)
+    }
 }
+

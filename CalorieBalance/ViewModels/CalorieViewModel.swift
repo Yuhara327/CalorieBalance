@@ -7,6 +7,7 @@
 import Foundation
 import Combine
 import SwiftUI
+import HealthKit
 
 enum DietGoalMode: String, CaseIterable, Identifiable {
     case lose = "減量"
@@ -265,46 +266,145 @@ class CalorieBalanceViewModel: ObservableObject {
         }
     }
     
-    func requestAccessAndFetchData(customStartDate: Date? = nil) {
-        if isPreview { return }
-        if let customStart = customStartDate, let currentOldest = initialFetchDate, customStart >= currentOldest {
-                return
+    // ① 昔の形を復活（他のViewのエラーを全て消すためのダミー・ラッパー）
+        func requestAccessAndFetchData(customStartDate: Date? = nil) {
+            Task {
+                // 中身は②を呼ぶだけ
+                await reloadDataAsync(customStartDate: customStartDate)
             }
-        Task {
-            isLoading = true
-            let fetchStart = min(customStartDate ?? dietStartDate, initialFetchDate ?? dietStartDate)// ややこしいが、とにかくロードしなきゃいけない最古の日を記録してる
-            do {
-                try await healthKitManager.requestAuthorization()
-                
-                let fetched = try await healthKitManager.fetchDailyCalories(startDate: fetchStart, endDate: Date())
-                self.allData = fetched
-                self.initialFetchDate = fetchStart
-            } catch {
-                self.errorMessage = "データの取得に失敗しました。: \(error.localizedDescription)"
-            }
-            
-            isLoading = false
         }
-    }
-    
+
+        // ② 手入力した時などに「終わるまで待つ」ための本当の取得メソッド
+    private func reloadDataAsync(customStartDate: Date? = nil) async {
+                let fetchStart = customStartDate ?? dietStartDate
+                
+                await MainActor.run { self.isLoading = true }
+                
+                do {
+                    try await healthKitManager.requestAuthorization()
+                    
+                    // ★追加：取得の「終了地点」を「今日の23時59分59秒」にする
+                    let calendar = Calendar.current
+                    let endOfToday = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
+                    
+                    let fetched = try await healthKitManager.fetchDailyCalories(
+                        startDate: fetchStart,
+                        endDate: endOfToday // ← ★ Date() から endOfToday に変更！
+                    )
+                    
+                    await MainActor.run {
+                        self.allData = fetched
+                        self.initialFetchDate = fetchStart
+                        self.isLoading = false
+                    }
+                } catch {
+                    await MainActor.run {
+                        self.errorMessage = "データの取得に失敗しました: \(error.localizedDescription)"
+                        self.isLoading = false
+                    }
+                }
+            }
     func changeMonth(by value: Int) {
-        if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
-            selectedMonth = newMonth
-            
-            let currentOldest = initialFetchDate ?? dietStartDate
-            
-            if selectedMonth < currentOldest {
-                let calendar = Calendar.current
-                if let startOfNewMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth)) {
-                    requestAccessAndFetchData(customStartDate: startOfNewMonth)
+            if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
+                selectedMonth = newMonth
+                let currentOldest = initialFetchDate ?? dietStartDate
+                
+                if selectedMonth < currentOldest {
+                    let calendar = Calendar.current
+                    if let startOfNewMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth)) {
+                        // Task は不要になりました。直接呼びます。
+                        requestAccessAndFetchData(customStartDate: startOfNewMonth)
+                    }
                 }
             }
         }
+
+    // MARK: - 手入力データの保存と同期
+
+        func addDietaryCalories(_ calories: Double, for date: Date) {
+            Task {
+                do {
+                    // 1. 保存時間をその日の「お昼の12時（正午）」にずらして確実にその日のデータにする
+                    let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+                    try await healthKitManager.saveDietaryEnergy(calories: calories, date: saveDate)
+                    
+                    // 2. HealthKitのデータベースが更新されるのを0.5秒待つ
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    
+                    // 3. 最新データを取得して画面を更新
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                } catch {
+                    await MainActor.run { self.errorMessage = "カロリーの保存に失敗: \(error.localizedDescription)" }
+                }
+            }
+        }
+
+        func addWeight(_ weight: Double, for date: Date) {
+            Task {
+                do {
+                    // 体重も同様にお昼の12時で保存
+                    let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+                    try await healthKitManager.saveWeight(weight: weight, date: saveDate)
+                    
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                } catch {
+                    await MainActor.run { self.errorMessage = "体重の保存に失敗: \(error.localizedDescription)" }
+                }
+            }
+        }
+
+        func addSleep(start: Date, end: Date) {
+            Task {
+                do {
+                    // 睡眠はユーザーが選んだ時間をそのまま使う
+                    try await healthKitManager.saveSleep(start: start, end: end)
+                    
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                } catch {
+                    await MainActor.run { self.errorMessage = "睡眠の保存に失敗: \(error.localizedDescription)" }
+                }
+            }
+        }
+    
+    // MARK: - 手入力データの削除
+        
+    func deleteDietaryCalories(for date: Date) {
+        Task {
+            do {
+                try await healthKitManager.deleteQuantityData(for: .dietaryEnergyConsumed, on: date)
+                try await Task.sleep(nanoseconds: 500_000_000)
+                await reloadDataAsync(customStartDate: initialFetchDate)
+            } catch {
+                await MainActor.run { self.errorMessage = "カロリーの削除に失敗: \(error.localizedDescription)" }
+            }
+        }
     }
-    
-    
-    
-    
+
+    func deleteWeight(for date: Date) {
+        Task {
+            do {
+                try await healthKitManager.deleteQuantityData(for: .bodyMass, on: date)
+                try await Task.sleep(nanoseconds: 500_000_000)
+                await reloadDataAsync(customStartDate: initialFetchDate)
+            } catch {
+                await MainActor.run { self.errorMessage = "体重の削除に失敗: \(error.localizedDescription)" }
+            }
+        }
+    }
+
+    func deleteSleep(for date: Date) {
+        Task {
+            do {
+                try await healthKitManager.deleteSleepData(on: date)
+                try await Task.sleep(nanoseconds: 500_000_000)
+                await reloadDataAsync(customStartDate: initialFetchDate)
+            } catch {
+                await MainActor.run { self.errorMessage = "睡眠の削除に失敗: \(error.localizedDescription)" }
+            }
+        }
+    }
     //プレビューよう
     private let isPreview: Bool
     

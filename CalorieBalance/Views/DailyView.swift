@@ -60,7 +60,7 @@ struct DailyView: View {
                 }
             }
             .navigationDestination(for: DailyMetrics.self) { data in
-                DayDetailView(metrics: data)
+                DayDetailView(viewModel: viewModel, metrics: data)
             }
             .navigationTitle("Daily")
             .toolbarTitleDisplayMode(.inlineLarge)
