@@ -33,17 +33,34 @@ struct GoalSetupView: View {
                     Spacer(minLength: 20)
                     
                     // --- セクション1: ダイエットモード ---
-                    VStack(alignment: .leading, spacing: 12) {
+                    VStack(alignment: .leading, spacing: 16) {
                         Text("ダイエットモード")
                             .font(.caption).bold()
                             .foregroundColor(.secondary)
                         
+                        // 1. ピッカーはテキストのみにする（OSの制約を回避）
                         Picker("モード", selection: $viewModel.goalMode) {
                             ForEach(DietGoalMode.allCases) { mode in
                                 Text(mode.rawValue).tag(mode)
                             }
                         }
                         .pickerStyle(.segmented)
+                        
+                        // 2. ピッカーの下にアイコンと現在のモード名を表示
+                        HStack {
+                            Spacer()
+                            Image(systemName: viewModel.goalMode.iconName)
+                                .font(.title2)
+                                .foregroundColor(.teal) // 全てtealで統一
+                            
+                            Text(viewModel.goalMode.rawValue)
+                                .font(.headline)
+                                .foregroundColor(.primary)
+                            Spacer()
+                        }
+                        .padding(.top, 4)
+                        // 選択が変わった時にふわっと動くようにする
+                        .animation(.spring(response: 0.3), value: viewModel.goalMode)
                     }
                     .padding()
                     .background(
@@ -139,6 +156,7 @@ struct GoalSetupView: View {
                         }
                         viewModel.startingWeight = currentWeightInput
                         viewModel.isGoalSet = true
+                        viewModel.dietStartDate = Date()
                         dismiss()
                     } label: {
                         Text(isInputValid ? "この目標で開始する" : "入力を確認してください")

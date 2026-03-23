@@ -13,8 +13,16 @@ enum DietGoalMode: String, CaseIterable, Identifiable {
     case maintain = "維持"
     case gain = "増量"
     var id: String { self.rawValue }
+    
+    // アイコン名のみを定義
+    var iconName: String {
+        switch self {
+        case .lose:     return "arrow.down.right.circle.fill"
+        case .maintain: return "equal.circle.fill"
+        case .gain:     return "arrow.up.right.circle.fill"
+        }
+    }
 }
-
 @MainActor
 class CalorieBalanceViewModel: ObservableObject {
     @Published var allData: [DailyMetrics] = []
@@ -28,6 +36,84 @@ class CalorieBalanceViewModel: ObservableObject {
     @AppStorage("targetWeight") var targetWeight: Double = 60.0
     @AppStorage("targetDateInterval") private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
     @AppStorage("startingWeight") var startingWeight: Double = 0.0
+    
+    enum GoalStatus {
+        case inProgress
+        case achieved
+        case expired
+    }
+    
+    var currentGoalStatus: GoalStatus {
+        guard isGoalSet else { return .inProgress }
+        
+        let current = effectiveCurrentWeight
+        let target = targetWeight
+        let isPastDeadline = Date() > targetDate
+        
+        switch goalMode {
+        case .maintain:
+            // 維持モードの場合
+            if isPastDeadline {
+                // 期限が来た時に、目標との差が1kg以内なら「達成」、そうでなければ「失敗（期限切れ）」
+                return abs(current - target) <= 1.0 ? .achieved : .expired
+            } else {
+                // 期限内であれば、今の体重に関わらず常に「進行中」
+                return .inProgress
+            }
+            
+        case .lose, .gain:
+            // 減量・増量モードの場合（従来通り、目標値に達した時点で達成）
+            let isWeightAchieved = (goalMode == .lose) ? (current <= target) : (current >= target)
+            
+            if isWeightAchieved {
+                return .achieved
+            } else if isPastDeadline {
+                return .expired
+            } else {
+                return .inProgress
+            }
+        }
+    }
+    
+    var remainingDays: Int {
+        let calendar = Calendar.current
+        // 今日の開始時点から期限日までの日数を計算
+        let startOfToday = calendar.startOfDay(for: Date())
+        let startOfTarget = calendar.startOfDay(for: targetDate)
+        let components = calendar.dateComponents([.day], from: startOfToday, to: startOfTarget)
+        return max(0, components.day ?? 0)
+    }
+    
+    // 維持モード用の経過日数割合（0.0 〜 1.0）
+    var maintenanceProgress: Double {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: dietStartDate)
+        let endOfDay = calendar.startOfDay(for: targetDate)
+        let todayOfDay = calendar.startOfDay(for: Date())
+        
+        // 全体の期間（日数）
+        let totalDaysComponents = calendar.dateComponents([.day], from: startOfDay, to: endOfDay)
+        let totalDays = Double(totalDaysComponents.day ?? 1) // 最低1日とする
+        
+        // 開始日から今日までの日数
+        let elapsedDaysComponents = calendar.dateComponents([.day], from: startOfDay, to: todayOfDay)
+        let elapsedDays = Double(elapsedDaysComponents.day ?? 0)
+        
+        // 進捗率を計算（0.0 〜 1.0 にクランプ）
+        return max(0.0, min(1.0, elapsedDays / totalDays))
+    }
+    
+    var goalStatusMessage: String {
+        switch currentGoalStatus {
+        case .achieved:
+            return goalMode == .maintain ? "目標体重を維持しています！" : "目標達成！おめでとうございます！"
+        case .expired:
+            return "期限が過ぎました。目標を再設定しましょう！"
+        case .inProgress:
+            let diff = abs(targetWeight - effectiveCurrentWeight)
+            return String(format: "目標まであと%.1f kg", diff)
+        }
+    }
     
     var targetDate: Date {
             get { Date(timeIntervalSince1970: targetDateInterval) }
@@ -86,6 +172,18 @@ class CalorieBalanceViewModel: ObservableObject {
             // 維持モードは±1.0kg以内なら達成とみなす論理
             return abs(current - target) <= 1.0 ? 1.0 : 0.0
         }
+    }
+    
+    // CalorieBalanceViewModel 内に追加
+    func prepareForReselectingGoal() {
+        // 1. 現在の(直近の)体重を開始体重として再設定
+        self.startingWeight = self.effectiveCurrentWeight
+        
+        // 2. 期限を現在から90日後に更新（デフォルト値の再適用）
+        let defaultDuration: TimeInterval = 86400 * 90
+        self.targetDate = Date().addingTimeInterval(defaultDuration)
+        
+        // 3. (任意) 目標体重も現在の体重に近い値にリセットしたければここで調整
     }
     //開始日の「数字」は端末に保存する
     @AppStorage("dietStartDate") private var dietStartDateInterval : TimeInterval =
