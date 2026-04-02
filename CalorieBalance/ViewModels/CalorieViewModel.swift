@@ -8,6 +8,7 @@ import Foundation
 import Combine
 import SwiftUI
 import HealthKit
+import WidgetKit
 
 enum DietGoalMode: String, CaseIterable, Identifiable {
     case lose = "減量"
@@ -31,12 +32,12 @@ class CalorieBalanceViewModel: ObservableObject {
     @Published var errorMessage: String?
     @Published var selectedMonth: Date = Date()
     
-    //目標設定
-    @AppStorage("isGoalSet") var isGoalSet: Bool = false // 目標設定がなされているか
-    @AppStorage("dietGoalMode") var goalMode: DietGoalMode = .lose
-    @AppStorage("targetWeight") var targetWeight: Double = 60.0
-    @AppStorage("targetDateInterval") private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
-    @AppStorage("startingWeight") var startingWeight: Double = 0.0
+    // 目標設定（共有領域へ保存先を変更）
+    @AppStorage("isGoalSet", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var isGoalSet: Bool = false
+    @AppStorage("dietGoalMode", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var goalMode: DietGoalMode = .lose
+    @AppStorage("targetWeight", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var targetWeight: Double = 60.0
+    @AppStorage("targetDateInterval", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
+    @AppStorage("startingWeight", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var startingWeight: Double = 0.0
     
     enum GoalStatus {
         case inProgress
@@ -187,8 +188,8 @@ class CalorieBalanceViewModel: ObservableObject {
         // 3. (任意) 目標体重も現在の体重に近い値にリセットしたければここで調整
     }
     //開始日の「数字」は端末に保存する
-    @AppStorage("dietStartDate") private var dietStartDateInterval : TimeInterval =
-        Calendar.current.date(byAdding: .day, value: -29, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970 //便利な条件式である。
+        @AppStorage("dietStartDate", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var dietStartDateInterval : TimeInterval =
+            Calendar.current.date(byAdding: .day, value: -29, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
     //取得期間用の変数
     private var initialFetchDate: Date?
     //開始日の数字を時間型にしたり、時間型でユーザが変えたやつを数字にしたりする。つまりこいつがユーザーの設定した、ダイエットの開始日である。
@@ -276,34 +277,36 @@ class CalorieBalanceViewModel: ObservableObject {
 
         // ② 手入力した時などに「終わるまで待つ」ための本当の取得メソッド
     private func reloadDataAsync(customStartDate: Date? = nil) async {
-                let fetchStart = customStartDate ?? dietStartDate
+            let fetchStart = customStartDate ?? dietStartDate
+            
+            await MainActor.run { self.isLoading = true }
+            
+            do {
+                try await healthKitManager.requestAuthorization()
                 
-                await MainActor.run { self.isLoading = true }
+                // 取得の「終了地点」を「今日の23時59分59秒」にする
+                let calendar = Calendar.current
+                let endOfToday = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
                 
-                do {
-                    try await healthKitManager.requestAuthorization()
-                    
-                    // ★追加：取得の「終了地点」を「今日の23時59分59秒」にする
-                    let calendar = Calendar.current
-                    let endOfToday = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
-                    
-                    let fetched = try await healthKitManager.fetchDailyCalories(
-                        startDate: fetchStart,
-                        endDate: endOfToday // ← ★ Date() から endOfToday に変更！
-                    )
-                    
-                    await MainActor.run {
-                        self.allData = fetched
-                        self.initialFetchDate = fetchStart
-                        self.isLoading = false
-                    }
-                } catch {
-                    await MainActor.run {
-                        self.errorMessage = "データの取得に失敗しました: \(error.localizedDescription)"
-                        self.isLoading = false
-                    }
+                let fetched = try await healthKitManager.fetchDailyCalories(
+                    startDate: fetchStart,
+                    endDate: endOfToday
+                )
+                
+                await MainActor.run {
+                    self.allData = fetched
+                    self.initialFetchDate = fetchStart
+                    self.isLoading = false
+                    self.exportSnapshotForWidget() // ← ★成功時の最後にのみ記述する
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "データの取得に失敗しました: \(error.localizedDescription)"
+                    self.isLoading = false
+                    // ★ここにあった余分なコードは削除しました
                 }
             }
+        }
     func changeMonth(by value: Int) {
             if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
                 selectedMonth = newMonth
@@ -422,4 +425,24 @@ class CalorieBalanceViewModel: ObservableObject {
             self.isPreview = false
         }
     }
+    
+    // MARK: - Widget連携用データの書き出し
+        private func exportSnapshotForWidget() {
+            // App Groupsの共有領域にアクセス
+            guard let sharedDefaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance") else { return }
+            
+            // 今日のデータを取得
+            let todayData = allData.first(where: { Calendar.current.isDateInToday($0.date) })
+            
+            // ウィジェットで描画するための計算結果を保存
+            sharedDefaults.set(todayData?.netCalories ?? 0.0, forKey: "widget_todayNetCalories")
+            sharedDefaults.set(dailyTargetCalories, forKey: "widget_dailyTargetCalories")
+            sharedDefaults.set(achievementRate, forKey: "widget_achievementRate")
+            sharedDefaults.set(remainingDays, forKey: "widget_remainingDays")
+            sharedDefaults.set(isDailyGoalAcheived, forKey: "widget_isDailyGoalAchieved")
+            sharedDefaults.set(goalMode.rawValue, forKey: "widget_goalMode")
+            
+            // OSに対して「ウィジェットの表示を更新して」と指示を出す
+            WidgetCenter.shared.reloadAllTimelines()
+        }
 }

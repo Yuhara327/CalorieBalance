@@ -6,8 +6,42 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		A6D086462F7EB64F00A325C6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086452F7EB64F00A325C6 /* WidgetKit.framework */; };
+		A6D086482F7EB64F00A325C6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086472F7EB64F00A325C6 /* SwiftUI.framework */; };
+		A6D086582F7EB65000A325C6 /* CalorieBalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		A6D086552F7EB65000A325C6 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = A69295682F61B6CF00B99F08 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = A6D086422F7EB64F00A325C6;
+			remoteInfo = CalorieBalanceWidgetExtension;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		A6D086572F7EB65000A325C6 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				A6D086582F7EB65000A325C6 /* CalorieBalanceWidgetExtension.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
 		A69295702F61B6CF00B99F08 /* CalorieBalance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalorieBalance.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorieBalanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		A6D086452F7EB64F00A325C6 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
+		A6D086472F7EB64F00A325C6 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
+		A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CalorieBalanceWidgetExtension.entitlements; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -18,6 +52,20 @@
 			);
 			target = A692956F2F61B6CF00B99F08 /* CalorieBalance */;
 		};
+		A6D0865C2F7EB65000A325C6 /* Exceptions for "CalorieBalanceWidget" folder in "CalorieBalanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */;
+		};
+		A6D0865F2F7EBC8700A325C6 /* Exceptions for "CalorieBalance" folder in "CalorieBalanceWidgetExtension" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Views/AdvancedBackgroundView.swift,
+			);
+			target = A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -25,8 +73,17 @@
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
 				A6AFC3582F71233700DA8539 /* Exceptions for "CalorieBalance" folder in "CalorieBalance" target */,
+				A6D0865F2F7EBC8700A325C6 /* Exceptions for "CalorieBalance" folder in "CalorieBalanceWidgetExtension" target */,
 			);
 			path = CalorieBalance;
+			sourceTree = "<group>";
+		};
+		A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A6D0865C2F7EB65000A325C6 /* Exceptions for "CalorieBalanceWidget" folder in "CalorieBalanceWidgetExtension" target */,
+			);
+			path = CalorieBalanceWidget;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -39,13 +96,25 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A6D086402F7EB64F00A325C6 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				A6D086482F7EB64F00A325C6 /* SwiftUI.framework in Frameworks */,
+				A6D086462F7EB64F00A325C6 /* WidgetKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
 		A69295672F61B6CF00B99F08 = {
 			isa = PBXGroup;
 			children = (
+				A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */,
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
+				A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */,
+				A6D086442F7EB64F00A325C6 /* Frameworks */,
 				A69295712F61B6CF00B99F08 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -54,8 +123,18 @@
 			isa = PBXGroup;
 			children = (
 				A69295702F61B6CF00B99F08 /* CalorieBalance.app */,
+				A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */,
 			);
 			name = Products;
+			sourceTree = "<group>";
+		};
+		A6D086442F7EB64F00A325C6 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				A6D086452F7EB64F00A325C6 /* WidgetKit.framework */,
+				A6D086472F7EB64F00A325C6 /* SwiftUI.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -68,10 +147,12 @@
 				A692956C2F61B6CF00B99F08 /* Sources */,
 				A692956D2F61B6CF00B99F08 /* Frameworks */,
 				A692956E2F61B6CF00B99F08 /* Resources */,
+				A6D086572F7EB65000A325C6 /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				A6D086562F7EB65000A325C6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
@@ -82,6 +163,28 @@
 			productName = CalorieBalance;
 			productReference = A69295702F61B6CF00B99F08 /* CalorieBalance.app */;
 			productType = "com.apple.product-type.application";
+		};
+		A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = A6D0865B2F7EB65000A325C6 /* Build configuration list for PBXNativeTarget "CalorieBalanceWidgetExtension" */;
+			buildPhases = (
+				A6D0863F2F7EB64F00A325C6 /* Sources */,
+				A6D086402F7EB64F00A325C6 /* Frameworks */,
+				A6D086412F7EB64F00A325C6 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */,
+			);
+			name = CalorieBalanceWidgetExtension;
+			packageProductDependencies = (
+			);
+			productName = CalorieBalanceWidgetExtension;
+			productReference = A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -94,6 +197,9 @@
 				LastUpgradeCheck = 2630;
 				TargetAttributes = {
 					A692956F2F61B6CF00B99F08 = {
+						CreatedOnToolsVersion = 26.3;
+					};
+					A6D086422F7EB64F00A325C6 = {
 						CreatedOnToolsVersion = 26.3;
 					};
 				};
@@ -113,12 +219,20 @@
 			projectRoot = "";
 			targets = (
 				A692956F2F61B6CF00B99F08 /* CalorieBalance */,
+				A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
 		A692956E2F61B6CF00B99F08 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		A6D086412F7EB64F00A325C6 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -135,7 +249,22 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		A6D0863F2F7EB64F00A325C6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		A6D086562F7EB65000A325C6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */;
+			targetProxy = A6D086552F7EB65000A325C6 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		A69295792F61B6CF00B99F08 /* Debug */ = {
@@ -329,6 +458,68 @@
 			};
 			name = Release;
 		};
+		A6D086592F7EB65000A325C6 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CalorieBalanceWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 595NJ6N7F6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CalorieBalanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CalorieBalanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yuhara.CalorieBalance.CalorieBalanceWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		A6D0865A2F7EB65000A325C6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				ASSETCATALOG_COMPILER_WIDGET_BACKGROUND_COLOR_NAME = WidgetBackground;
+				CODE_SIGN_ENTITLEMENTS = CalorieBalanceWidgetExtension.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 595NJ6N7F6;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = CalorieBalanceWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = CalorieBalanceWidget;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.yuhara.CalorieBalance.CalorieBalanceWidget;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
@@ -346,6 +537,15 @@
 			buildConfigurations = (
 				A692957C2F61B6CF00B99F08 /* Debug */,
 				A692957D2F61B6CF00B99F08 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		A6D0865B2F7EB65000A325C6 /* Build configuration list for PBXNativeTarget "CalorieBalanceWidgetExtension" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A6D086592F7EB65000A325C6 /* Debug */,
+				A6D0865A2F7EB65000A325C6 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
