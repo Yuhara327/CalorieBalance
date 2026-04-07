@@ -64,7 +64,9 @@ struct DailyView: View {
             }
             .navigationTitle("Daily")
             .toolbarTitleDisplayMode(.inlineLarge)
-            .refreshable { viewModel.requestAccessAndFetchData() }
+            .refreshable {
+                await viewModel.refreshData()
+            }
         }
     }
 }

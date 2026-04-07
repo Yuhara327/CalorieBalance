@@ -80,7 +80,9 @@ struct GraphView: View {
                 }
                 .navigationTitle("Trend")
                 .toolbarTitleDisplayMode(.inlineLarge)
-                .refreshable { viewModel.requestAccessAndFetchData() }
+                .refreshable {
+                    await viewModel.refreshData()
+                }
             }
         }
     }

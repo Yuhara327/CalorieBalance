@@ -41,11 +41,10 @@ struct GoalSetupView: View {
                         // 1. ピッカーはテキストのみにする（OSの制約を回避）
                         Picker("モード", selection: $viewModel.goalMode) {
                             ForEach(DietGoalMode.allCases) { mode in
-                                Text(mode.rawValue).tag(mode)
+                                Text(mode.localizedName).tag(mode) // rawValueをlocalizedNameに変更
                             }
                         }
                         .pickerStyle(.segmented)
-                        
                         // 2. ピッカーの下にアイコンと現在のモード名を表示
                         HStack {
                             Spacer()
@@ -53,7 +52,7 @@ struct GoalSetupView: View {
                                 .font(.title2)
                                 .foregroundColor(.teal) // 全てtealで統一
                             
-                            Text(viewModel.goalMode.rawValue)
+                            Text(viewModel.goalMode.localizedName)
                                 .font(.headline)
                                 .foregroundColor(.primary)
                             Spacer()

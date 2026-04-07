@@ -12,7 +12,6 @@ import SwiftUI
 struct CalorieBalanceWidgetBundle: WidgetBundle {
     var body: some Widget {
         CalorieBalanceWidget()
-        CalorieBalanceWidgetControl()
-        CalorieBalanceWidgetLiveActivity()
+        CalorieProgressWidget()
     }
 }

@@ -4,35 +4,26 @@ import SwiftUI
 // 1. Provider
 struct Provider: TimelineProvider {
     func placeholder(in context: Context) -> SimpleEntry {
-        SimpleEntry(date: Date(), netCalories: 0, targetCalories: 2000, remainingDays: 30, goalMode: "減量", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
+        SimpleEntry(date: Date(), netCalories: 0, targetCalories: 2000, remainingDays: 30, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
     }
 
     func getSnapshot(in context: Context, completion: @escaping (SimpleEntry) -> ()) {
-        let entry = SimpleEntry(date: Date(), netCalories: -350, targetCalories: -500, remainingDays: 14, goalMode: "減量", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
+        let entry = SimpleEntry(date: Date(), netCalories: -350, targetCalories: -500, remainingDays: 14, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
         completion(entry)
     }
 
     func getTimeline(in context: Context, completion: @escaping (Timeline<Entry>) -> ()) {
         let sharedDefaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance")
         
-        let isGoalSet = sharedDefaults?.bool(forKey: "isGoalSet") ?? false
-        let goalStatus = sharedDefaults?.string(forKey: "widget_goalStatus") ?? "inProgress"
-        
-        let netCalories = sharedDefaults?.double(forKey: "widget_todayNetCalories") ?? 0.0
-        let targetCalories = sharedDefaults?.double(forKey: "widget_dailyTargetCalories") ?? 0.0
-        let remainingDays = sharedDefaults?.integer(forKey: "widget_remainingDays") ?? 0
-        let isAchieved = sharedDefaults?.bool(forKey: "widget_isDailyGoalAchieved") ?? false
-        let goalMode = sharedDefaults?.string(forKey: "widget_goalMode") ?? "未設定"
-        
         let entry = SimpleEntry(
             date: Date(),
-            netCalories: netCalories,
-            targetCalories: targetCalories,
-            remainingDays: remainingDays,
-            goalMode: goalMode,
-            isAchieved: isAchieved,
-            isGoalSet: isGoalSet,
-            goalStatus: goalStatus
+            netCalories: sharedDefaults?.double(forKey: "widget_todayNetCalories") ?? 0.0,
+            targetCalories: sharedDefaults?.double(forKey: "widget_dailyTargetCalories") ?? 0.0,
+            remainingDays: sharedDefaults?.integer(forKey: "widget_remainingDays") ?? 0,
+            goalMode: sharedDefaults?.string(forKey: "widget_goalMode") ?? "lose",
+            isAchieved: sharedDefaults?.bool(forKey: "widget_isDailyGoalAchieved") ?? false,
+            isGoalSet: sharedDefaults?.bool(forKey: "isGoalSet") ?? false,
+            goalStatus: sharedDefaults?.string(forKey: "widget_goalStatus") ?? "inProgress"
         )
 
         let timeline = Timeline(entries: [entry], policy: .never)
@@ -98,7 +89,7 @@ struct CalorieBalanceWidgetEntryView : View {
                             Text("目標")
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                            Text(entry.goalMode)
+                            Text(localizedGoalMode(for: entry.goalMode)) // 翻訳を使用
                                 .font(.caption)
                                 .bold()
                         }
@@ -123,6 +114,16 @@ struct CalorieBalanceWidgetEntryView : View {
         }
         .padding(5)
     }
+    
+    // MARK: - Helper Methods
+    private func localizedGoalMode(for mode: String) -> String {
+        switch mode {
+        case "lose": return String(localized: "減量")
+        case "maintain": return String(localized: "維持")
+        case "gain": return String(localized: "増量")
+        default: return String(localized: "未設定")
+        }
+    }
 }
 
 // 4. Widget Configuration
@@ -133,10 +134,8 @@ struct CalorieBalanceWidget: Widget {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
             if #available(iOS 17.0, *) {
                 CalorieBalanceWidgetEntryView(entry: entry)
-                    // システムの標準背景を適用
                     .containerBackground(Color(UIColor.systemBackground), for: .widget)
             } else {
-                // iOS 16以前のフォールバック
                 CalorieBalanceWidgetEntryView(entry: entry)
                     .background(Color(UIColor.systemBackground))
             }
@@ -146,23 +145,24 @@ struct CalorieBalanceWidget: Widget {
         .supportedFamilies([.systemSmall])
     }
 }
+
 // --- Preview ---
 #Preview("1. 進行中", as: .systemSmall) {
     CalorieBalanceWidget()
 } timeline: {
-    SimpleEntry(date: Date(), netCalories: -200, targetCalories: -400, remainingDays: 45, goalMode: "減量", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
+    SimpleEntry(date: Date(), netCalories: -200, targetCalories: -400, remainingDays: 45, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
 }
 
 #Preview("2. 達成済み", as: .systemSmall) {
     CalorieBalanceWidget()
 } timeline: {
-    SimpleEntry(date: Date(), netCalories: -150, targetCalories: -400, remainingDays: 10, goalMode: "減量", isAchieved: true, isGoalSet: true, goalStatus: "achieved")
+    SimpleEntry(date: Date(), netCalories: -150, targetCalories: -400, remainingDays: 10, goalMode: "lose", isAchieved: true, isGoalSet: true, goalStatus: "achieved")
 }
 
 #Preview("3. 期限切れ（未達）", as: .systemSmall) {
     CalorieBalanceWidget()
 } timeline: {
-    SimpleEntry(date: Date(), netCalories: 300, targetCalories: -400, remainingDays: 0, goalMode: "減量", isAchieved: false, isGoalSet: true, goalStatus: "expired")
+    SimpleEntry(date: Date(), netCalories: 300, targetCalories: -400, remainingDays: 0, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "expired")
 }
 
 #Preview("4. 目標なし", as: .systemSmall) {

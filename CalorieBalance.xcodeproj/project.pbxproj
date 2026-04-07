@@ -10,6 +10,8 @@
 		A6D086462F7EB64F00A325C6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086452F7EB64F00A325C6 /* WidgetKit.framework */; };
 		A6D086482F7EB64F00A325C6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086472F7EB64F00A325C6 /* SwiftUI.framework */; };
 		A6D086582F7EB65000A325C6 /* CalorieBalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		A6ED5EDC2F84E8B900308C19 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */; };
+		A6ED5EDD2F84E8B900308C19 /* Localizable.xcstrings in Resources */ = {isa = PBXBuildFile; fileRef = A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -42,6 +44,7 @@
 		A6D086452F7EB64F00A325C6 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A6D086472F7EB64F00A325C6 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = CalorieBalanceWidgetExtension.entitlements; sourceTree = "<group>"; };
+		A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */ = {isa = PBXFileReference; lastKnownFileType = text.json.xcstrings; path = Localizable.xcstrings; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
@@ -111,6 +114,7 @@
 		A69295672F61B6CF00B99F08 = {
 			isa = PBXGroup;
 			children = (
+				A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */,
 				A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */,
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
 				A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */,
@@ -229,6 +233,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6ED5EDC2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -236,6 +241,7 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A6ED5EDD2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -326,6 +332,7 @@
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
 			};
 			name = Debug;
@@ -382,6 +389,7 @@
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
 				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
 			};
 			name = Release;

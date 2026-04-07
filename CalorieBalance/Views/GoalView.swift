@@ -200,7 +200,7 @@ struct GoalView: View {
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
-                        Text(viewModel.goalMode.rawValue).bold()
+                        Text(viewModel.goalMode.localizedName).bold()
                         Text("\(viewModel.targetWeight, format: .number) kg まで")
                     }
                     Text("達成期限: \(viewModel.targetDate, style: .date)")
