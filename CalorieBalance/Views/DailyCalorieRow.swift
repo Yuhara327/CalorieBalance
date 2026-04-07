@@ -15,7 +15,7 @@ struct DailyCalorieRow: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 5) {
             Text(formatDate(data.date))
-                .font(.headline)
+                .font(.subheadline)
             
             HStack {
                 // 消費カロリー
@@ -37,9 +37,9 @@ struct DailyCalorieRow: View {
                     Text("収支").font(.caption).foregroundColor(.secondary)
                     Group {
                         if let netCalories = data.netCalories {
-                            Text("\(Int(netCalories)) kcal")
+                            Text("\(Int(netCalories))")
                         } else {
-                            Text("-- kcal")
+                            Text("--")
                         }
                     }
                     .font(.title).bold()

@@ -83,4 +83,5 @@ struct DailyView: View {
 
 #Preview {
     DailyView(viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData))
+        .environment(\.locale, .init(identifier: "fr"))
 }

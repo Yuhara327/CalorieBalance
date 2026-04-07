@@ -1,27 +1,21 @@
-//
-//  GoalSetupView.swift
-//  CalorieBalance
-//
-//  Created by Soichiro Yuhara on 2026/03/22.
-//
-
 import SwiftUI
 
 struct GoalSetupView: View {
     @ObservedObject var viewModel: CalorieBalanceViewModel
     @Environment(\.dismiss) private var dismiss
     @FocusState private var isTextFieldFocused: Bool
-    @State private var currentWeightInput: Double = 0
     
-    // バリデーションロジック
+    // 表示・入力用の状態（ユーザーの単位系に合わせた数値が入る）
+    @State private var currentWeightInput: Double = 0
+    @State private var targetWeightInput: Double = 0
+    
+    // バリデーションロジック（単位系が何であれ、数値の大小関係で判定可能）
     private var isInputValid: Bool {
-        let current = currentWeightInput
-        let target = viewModel.targetWeight
-        if viewModel.goalMode == .maintain { return true }
-        guard target > 0 && current > 0 else { return false }
+        if viewModel.goalMode == .maintain { return currentWeightInput > 0 }
+        guard targetWeightInput > 0 && currentWeightInput > 0 else { return false }
         switch viewModel.goalMode {
-        case .lose: return target < current
-        case .gain: return target > current
+        case .lose: return targetWeightInput < currentWeightInput
+        case .gain: return targetWeightInput > currentWeightInput
         default: return false
         }
     }
@@ -84,8 +78,8 @@ struct GoalSetupView: View {
                                         Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                                     }
                                 }
-                                // 修正：OSの標準単位記号を表示
-                                Text(UnitMass.kilograms.symbol)
+                                // 動的な単位表示
+                                Text(viewModel.userWeightUnit.symbol)
                             }
                         }
                         .padding()
@@ -101,26 +95,26 @@ struct GoalSetupView: View {
                                     Label(String(localized: "目標体重"), systemImage: "target")
                                     Spacer()
                                     HStack(spacing: 8) {
-                                        TextField("0.0", value: $viewModel.targetWeight, format: .number)
+                                        TextField("0.0", value: $targetWeightInput, format: .number.precision(.fractionLength(1)))
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.trailing)
                                             .focused($isTextFieldFocused)
                                             .frame(minWidth: 60)
                                             .font(.system(.body, design: .rounded)).bold()
                                         
-                                        if isTextFieldFocused && viewModel.targetWeight != 0 {
-                                            Button { viewModel.targetWeight = 0 } label: {
+                                        if isTextFieldFocused && targetWeightInput != 0 {
+                                            Button { targetWeightInput = 0 } label: {
                                                 Image(systemName: "xmark.circle.fill").foregroundColor(.secondary)
                                             }
                                         }
-                                        // 修正：OSの標準単位記号を表示
-                                        Text(UnitMass.kilograms.symbol)
+                                        // 動的な単位表示
+                                        Text(viewModel.userWeightUnit.symbol)
                                     }
                                 }
                                 .contentShape(Rectangle())
                                 .onTapGesture { isTextFieldFocused = true }
                                 
-                                if !isInputValid && (viewModel.targetWeight > 0 || currentWeightInput > 0) {
+                                if !isInputValid && (targetWeightInput > 0 || currentWeightInput > 0) {
                                     Text(viewModel.goalMode == .lose
                                          ? String(localized: "現在より低い値を入力してください")
                                          : String(localized: "現在より高い値を入力してください"))
@@ -150,10 +144,21 @@ struct GoalSetupView: View {
                     
                     // --- セクション3: 開始ボタン ---
                     Button {
+                        // 入力されたユーザー単位の値を内部用のkgに変換して保存
+                        let unit = viewModel.userWeightUnit
+                        
+                        // 開始体重の変換保存
+                        let startMg = Measurement(value: currentWeightInput, unit: unit)
+                        viewModel.startingWeight = startMg.converted(to: .kilograms).value
+                        
+                        // 目標体重の変換保存
                         if viewModel.goalMode == .maintain {
-                            viewModel.targetWeight = currentWeightInput
+                            viewModel.targetWeight = viewModel.startingWeight
+                        } else {
+                            let targetMg = Measurement(value: targetWeightInput, unit: unit)
+                            viewModel.targetWeight = targetMg.converted(to: .kilograms).value
                         }
-                        viewModel.startingWeight = currentWeightInput
+                        
                         viewModel.isGoalSet = true
                         viewModel.dietStartDate = Date()
                         dismiss()
@@ -186,7 +191,12 @@ struct GoalSetupView: View {
             }
         }
         .onAppear {
-            currentWeightInput = (viewModel.effectiveCurrentWeight * 10).rounded() / 10
+            // 初期表示時に内部のkgをユーザーの単位に変換してStateにセット
+            currentWeightInput = viewModel.convertToUserUnitValue(viewModel.effectiveCurrentWeight)
+            targetWeightInput = viewModel.convertToUserUnitValue(viewModel.targetWeight)
         }
     }
+}
+#Preview {
+    GoalSetupView(viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData))
 }

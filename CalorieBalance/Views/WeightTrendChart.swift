@@ -188,3 +188,14 @@ struct WeightTrendChart: View {
         return dates
     }
 }
+#Preview {
+    // プレビュー用に一時的な状態を保持する場所がないため、
+    // シンプルに表示を確認するだけなら .constant を使います。
+    WeightTrendChart(
+        viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData),
+        graphStartDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
+        selectedDate: .constant(nil) // Bindingへの暫定対応
+    )
+    .padding()
+    .background(Color.black.opacity(0.1)) // グラフを見やすくするための背景
+}

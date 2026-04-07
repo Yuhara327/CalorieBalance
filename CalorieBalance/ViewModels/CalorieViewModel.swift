@@ -510,4 +510,29 @@ class CalorieBalanceViewModel: ObservableObject {
         
         WidgetCenter.shared.reloadAllTimelines()
     }
+    
+    
+}
+
+extension CalorieBalanceViewModel {
+    // 1. 現在の地域の標準単位を返すプロパティ
+    var userWeightUnit: UnitMass {
+        let system = Locale.current.measurementSystem
+        if system == .us { return .pounds }
+        if system == .uk { return .stones }
+        return .kilograms
+    }
+
+    // 2. 保存時に「ユーザーの単位」を「内部のkg」に変換して保存する
+    func saveWeightFromUserUnit(_ value: Double, for date: Date) {
+        let measurement = Measurement(value: value, unit: userWeightUnit)
+        let kgValue = measurement.converted(to: .kilograms).value
+        self.addWeight(kgValue, for: date) // 既存の保存メソッドを呼ぶ
+    }
+    
+    // 3. 表示用に「内部のkg」を「ユーザーの単位」の数値に変換する
+    func convertToUserUnitValue(_ kgValue: Double) -> Double {
+        let measurement = Measurement(value: kgValue, unit: UnitMass.kilograms)
+        return measurement.converted(to: userWeightUnit).value
+    }
 }

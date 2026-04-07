@@ -252,3 +252,44 @@ struct GoalView: View {
         .padding(.top, 40)
     }
 }
+#Preview("目標未設定") {
+    let viewModel = CalorieBalanceViewModel()
+    viewModel.isGoalSet = false
+    
+    return GoalView(viewModel: viewModel)
+}
+
+#Preview("目標進行中 (減量)") {
+    let viewModel = CalorieBalanceViewModel()
+    viewModel.isGoalSet = true
+    viewModel.goalMode = .lose
+    viewModel.startingWeight = 75.0
+    viewModel.targetWeight = 70.0
+    viewModel.targetDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
+    // 現在の進捗をシミュレート（例: 72.5kg = 50%達成）
+    // viewModel側の計算ロジックに基づき表示されます
+    
+    return GoalView(viewModel: viewModel)
+}
+
+#Preview("維持モード") {
+    let viewModel = CalorieBalanceViewModel()
+    viewModel.isGoalSet = true
+    viewModel.goalMode = .maintain
+    viewModel.startingWeight = 70.0
+    viewModel.targetWeight = 70.0
+    viewModel.dietStartDate = Calendar.current.date(byAdding: .day, value: -15, to: Date()) ?? Date()
+    viewModel.targetDate = Calendar.current.date(byAdding: .day, value: 15, to: Date()) ?? Date()
+    
+    return GoalView(viewModel: viewModel)
+}
+
+#Preview("目標達成！") {
+    let viewModel = CalorieBalanceViewModel()
+    viewModel.isGoalSet = true
+    // ここで viewModel.currentGoalStatus が .achieved になるようなデータをセット
+    // （例：目標70kgに対し、現在の実測値が70kg以下）
+    viewModel.targetWeight = 70.0
+    
+    return GoalView(viewModel: viewModel)
+}

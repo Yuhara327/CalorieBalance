@@ -1,10 +1,3 @@
-//
-//  DayDetailView.swift
-//  CalorieBalance
-//
-//  Created by Soichiro Yuhara on 2026/03/16.
-//
-
 import SwiftUI
 
 struct DayDetailView: View {
@@ -37,36 +30,37 @@ struct DayDetailView: View {
                 VStack(spacing: 28) {
                     if let net = currentData.netCalories {
                         HStack {
-                            Image(systemName: net <= 0 ? "leaf.fill" : "exclamationmark.fire.fill")
-                                .font(.title2)
-                            
                             let fatGrams = Measurement(value: abs(currentData.fatEquivalentGram), unit: UnitMass.grams)
                             Text("脂肪換算で約 \(fatGrams.formatted(.measurement(width: .abbreviated))) \(net <= 0 ? Text("減少") : Text("増加"))")
                                 .font(.headline)
                         }
-                        .foregroundColor(currentData.netColor)
                         .padding(.top, 8)
                     }
                     
-                    VStack(spacing: 16) {
-                        sectionHeader(title: String(localized: "エネルギー"), icon: "bolt.fill")
+                    VStack(spacing: 12) {
+                        sectionHeader(String(localized: "エネルギー"))
                         
                         VStack(spacing: 0) {
-                            // 修正：mapの結果を明示的にTextに変換
                             energyRow(
                                 icon: "flame.fill",
                                 title: String(localized: "消費"),
                                 value: currentData.totalBurnedCalories.map { Text("\(Int($0)) kcal") } ?? Text("-- kcal"),
                                 color: .green
                             )
+                            
                             Divider().padding(.horizontal)
-                            energyRow(
-                                icon: "fork.knife",
-                                title: String(localized: "摂取"),
-                                value: currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text("-- kcal"),
-                                color: .orange
-                            )
+                            
+                            Button(action: { showingEnergyInput = true }) {
+                                energyRow(
+                                    icon: "fork.knife",
+                                    title: String(localized: "摂取"),
+                                    value: currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text(String(localized: "入力する")),
+                                    color: .red
+                                )
+                            }
+                            
                             Divider().padding(.horizontal)
+                            
                             energyRow(
                                 icon: "equal.circle",
                                 title: String(localized: "収支"),
@@ -76,31 +70,24 @@ struct DayDetailView: View {
                             )
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
-                        
-                        Button(action: { showingEnergyInput = true }) {
-                            Label(String(localized: "食事を記録"), systemImage: "plus.circle.fill")
-                                .font(.headline)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.orange.opacity(0.2))
-                                .cornerRadius(15)
-                        }
                     }
                     
-                    VStack(spacing: 16) {
-                        sectionHeader(title: String(localized: "ヘルスケア"), icon: "heart.fill")
+                    VStack(spacing: 12) {
+                        sectionHeader(String(localized: "ヘルスケア"))
                         
                         VStack(spacing: 0) {
                             healthRow(
                                 icon: "figure.walk",
                                 title: String(localized: "歩数"),
                                 value: currentData.steps.map { Text("\($0) 歩") } ?? Text("--"),
-                                color: .blue
+                                color: .orange
                             )
+                            
                             Divider().padding(.horizontal)
                             
                             let weightValue: Text = {
                                 if let w = currentData.weight {
+                                    // 修正：内部のkgをユーザー設定の単位（kg/lb/st）に変換して表示
                                     let m = Measurement(value: w, unit: UnitMass.kilograms)
                                     return Text(m.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
                                 } else {
@@ -108,8 +95,15 @@ struct DayDetailView: View {
                                 }
                             }()
                             
-                            Button(action: { showingWeightInput = true }) {
-                                healthRow(icon: "scalemass.fill", title: String(localized: "体重"), value: weightValue, color: .purple)
+                            Button(action: {
+                                // アラートを開く前に、現在の体重をユーザーの単位に変換してセット
+                                if let w = currentData.weight {
+                                    let converted = viewModel.convertToUserUnitValue(w)
+                                    weightInput = String(format: "%.1f", converted)
+                                }
+                                showingWeightInput = true
+                            }) {
+                                healthRow(icon: "scalemass.fill", title: String(localized: "体重"), value: weightValue, color: .teal)
                             }
                             
                             Divider().padding(.horizontal)
@@ -142,20 +136,20 @@ struct DayDetailView: View {
             Button(String(localized: "キャンセル"), role: .cancel) { energyInput = "" }
             Button(String(localized: "保存")) {
                 if let amount = Double(energyInput) {
-                    // 修正：正しい引数ラベル (_:for:) に合わせる
                     viewModel.addDietaryCalories(amount, for: currentData.date)
                 }
                 energyInput = ""
             }
         }
         .alert(String(localized: "体重を入力"), isPresented: $showingWeightInput) {
-            TextField(UnitMass.kilograms.symbol, text: $weightInput)
+            // 修正：現在の地域設定に合わせた単位記号を表示
+            TextField(viewModel.userWeightUnit.symbol, text: $weightInput)
                 .keyboardType(.decimalPad)
             Button(String(localized: "キャンセル"), role: .cancel) { weightInput = "" }
             Button(String(localized: "保存")) {
-                if let w = Double(weightInput) {
-                    // 修正：既存のメソッド名 addWeight を使用
-                    viewModel.addWeight(w, for: currentData.date)
+                if let val = Double(weightInput) {
+                    // 修正：ユーザーの単位として解釈し、内部でkg変換して保存
+                    viewModel.saveWeightFromUserUnit(val, for: currentData.date)
                 }
                 weightInput = ""
             }
@@ -173,7 +167,6 @@ struct DayDetailView: View {
                     }
                     ToolbarItem(placement: .confirmationAction) {
                         Button(String(localized: "保存")) {
-                            // 修正：既存のメソッド名 addSleep を使用
                             viewModel.addSleep(start: sleepStart, end: sleepEnd)
                             showingSleepInput = false
                         }
@@ -184,17 +177,15 @@ struct DayDetailView: View {
         }
     }
     
-    private func sectionHeader(title: String, icon: String) -> some View {
-        HStack {
-            Image(systemName: icon)
-            Text(title)
-        }
-        .font(.caption).bold()
-        .foregroundColor(.secondary)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.leading, 8)
+    private func sectionHeader(_ title: String) -> some View {
+        Text(title)
+            .font(.subheadline)
+            .foregroundColor(.primary.opacity(0.8))
+            .bold()
+            .padding(.leading, 8)
+            .frame(maxWidth: .infinity, alignment: .leading)
     }
-    
+
     @ViewBuilder
     private func energyRow(icon: String, title: String, value: Text, color: Color, isLarge: Bool = false) -> some View {
         HStack {
@@ -218,5 +209,21 @@ struct DayDetailView: View {
             value.font(.largeTitle).foregroundColor(color).bold()
         }
         .padding(panelPadding)
+    }
+}
+#Preview {
+    let viewModel = CalorieBalanceViewModel()
+    let dummyMetrics = DailyMetrics(
+        date: Date(),
+        activeCalories: 1800,
+        restingCalories: 600,
+        dietaryCalories: 1500,
+        steps: 8500,
+        sleepSeconds: 27000, // 7.5時間
+        weight: 70.5        // 正しい位置に修正
+    )
+    
+    NavigationStack {
+        DayDetailView(viewModel: viewModel, metrics: dummyMetrics)
     }
 }
