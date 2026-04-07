@@ -49,16 +49,16 @@ struct CalorieBalanceWidgetEntryView : View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            // 上部：今日の収支
             HStack {
                 Image(systemName: "flame.fill")
                     .foregroundColor(entry.netCalories <= 0 ? .green : .red)
-                Text("今日の収支")
+                Text(String(localized: "今日の収支"))
                     .font(.caption)
                     .bold()
                     .foregroundColor(.secondary)
             }
             
+            // 重要修正：Catalogに「%lld kcal」という一文を登録させる
             Text("\(Int(entry.netCalories)) kcal")
                 .foregroundColor(entry.netCalories <= 0 ? .green : .red)
                 .font(.title)
@@ -67,17 +67,16 @@ struct CalorieBalanceWidgetEntryView : View {
             
             Divider()
             
-            // 下部：ステータスに応じた条件分岐
             if entry.isGoalSet {
                 if entry.goalStatus == "achieved" {
-                    Text("目標達成！")
+                    Text(String(localized: "目標達成！"))
                         .font(.subheadline)
                         .bold()
                         .foregroundColor(.green)
                         .frame(maxWidth: .infinity, alignment: .center)
                         .padding(.top, 4)
                 } else if entry.goalStatus == "expired" {
-                    Text("期限が終了しました")
+                    Text(String(localized: "期限が終了しました"))
                         .font(.caption)
                         .bold()
                         .foregroundColor(.orange)
@@ -86,18 +85,21 @@ struct CalorieBalanceWidgetEntryView : View {
                 } else {
                     HStack {
                         VStack(alignment: .leading) {
-                            Text("目標")
+                            Text(String(localized: "目標"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
-                            Text(localizedGoalMode(for: entry.goalMode)) // 翻訳を使用
+                            Text(localizedGoalMode(for: entry.goalMode))
                                 .font(.caption)
                                 .bold()
                         }
                         Spacer()
                         VStack(alignment: .trailing) {
-                            Text("期限まで")
+                            Text(String(localized: "期限まで"))
                                 .font(.caption2)
                                 .foregroundColor(.secondary)
+                            
+                            // 重要修正：バラバラにせず「あと %lld 日」という一文にする
+                            // これで %@ %@ 系のゴミキーが消え、翻訳者が語順を変えられるようになります
                             Text("あと \(entry.remainingDays) 日")
                                 .font(.caption)
                                 .bold()
@@ -105,7 +107,7 @@ struct CalorieBalanceWidgetEntryView : View {
                     }
                 }
             } else {
-                Text("目標が設定されていません")
+                Text(String(localized: "目標が設定されていません"))
                     .font(.caption)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .center)
@@ -115,7 +117,6 @@ struct CalorieBalanceWidgetEntryView : View {
         .padding(5)
     }
     
-    // MARK: - Helper Methods
     private func localizedGoalMode(for mode: String) -> String {
         switch mode {
         case "lose": return String(localized: "減量")
@@ -132,6 +133,7 @@ struct CalorieBalanceWidget: Widget {
 
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { entry in
+            // Appleの「いらんこと」への対応（iOS 17分岐）
             if #available(iOS 17.0, *) {
                 CalorieBalanceWidgetEntryView(entry: entry)
                     .containerBackground(Color(UIColor.systemBackground), for: .widget)
@@ -140,33 +142,8 @@ struct CalorieBalanceWidget: Widget {
                     .background(Color(UIColor.systemBackground))
             }
         }
-        .configurationDisplayName("カロリー収支")
-        .description("今日のカロリー収支と目標を確認します。")
+        .configurationDisplayName(String(localized: "カロリー収支"))
+        .description(String(localized: "今日のカロリー収支と目標を確認します。"))
         .supportedFamilies([.systemSmall])
     }
-}
-
-// --- Preview ---
-#Preview("1. 進行中", as: .systemSmall) {
-    CalorieBalanceWidget()
-} timeline: {
-    SimpleEntry(date: Date(), netCalories: -200, targetCalories: -400, remainingDays: 45, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "inProgress")
-}
-
-#Preview("2. 達成済み", as: .systemSmall) {
-    CalorieBalanceWidget()
-} timeline: {
-    SimpleEntry(date: Date(), netCalories: -150, targetCalories: -400, remainingDays: 10, goalMode: "lose", isAchieved: true, isGoalSet: true, goalStatus: "achieved")
-}
-
-#Preview("3. 期限切れ（未達）", as: .systemSmall) {
-    CalorieBalanceWidget()
-} timeline: {
-    SimpleEntry(date: Date(), netCalories: 300, targetCalories: -400, remainingDays: 0, goalMode: "lose", isAchieved: false, isGoalSet: true, goalStatus: "expired")
-}
-
-#Preview("4. 目標なし", as: .systemSmall) {
-    CalorieBalanceWidget()
-} timeline: {
-    SimpleEntry(date: Date(), netCalories: 300, targetCalories: 0, remainingDays: 0, goalMode: "未設定", isAchieved: false, isGoalSet: false, goalStatus: "inProgress")
 }

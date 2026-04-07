@@ -75,39 +75,51 @@ struct CalorieProgressWidgetEntryView : View {
                                 .foregroundColor(.orange)
                         } else {
                             if entry.goalMode == "maintain" {
-                                Text("\(entry.remainingDays)").font(.system(.title2, design: .rounded)).bold()
-                                Text("日").font(.caption2).foregroundColor(.secondary)
+                                // 重要修正：Catalogに「%lld 日」という一文を登録
+                                Text("\(entry.remainingDays) 日")
+                                    .font(.system(.title2, design: .rounded)).bold()
                             } else {
-                                Text("\(Int(entry.achievementRate * 100))%").font(.system(.title2, design: .rounded)).bold()
+                                // 重要修正：Catalogに「%lld%」という一文を登録
+                                Text("\(Int(entry.achievementRate * 100))%")
+                                    .font(.system(.title2, design: .rounded)).bold()
                             }
                         }
                     }
                 }
                 .frame(width: 80, height: 80)
                 
-                Text(localizedStatusMessage(for: entry))
-                    .font(.system(size: 10, weight: .bold))
-                    .padding(.horizontal, 8).padding(.vertical, 4)
-                    .background(Capsule().fill(badgeColor(for: entry.goalStatus).opacity(0.15)))
-                    .foregroundColor(badgeColor(for: entry.goalStatus))
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
+                statusBadge(for: entry)
             }
         } else {
-            Text("目標未設定").font(.caption).foregroundColor(.secondary)
+            Text(String(localized: "目標未設定")).font(.caption).foregroundColor(.secondary)
         }
     }
     
-    // MARK: - Helper Methods
+    // MARK: - Subviews & Helper Methods
     
-    private func localizedStatusMessage(for entry: ProgressEntry) -> String {
-        if entry.goalStatus == "achieved" {
-            return entry.goalMode == "maintain" ? String(localized: "目標体重を維持しています！") : String(localized: "目標達成！おめでとうございます！")
-        } else if entry.goalStatus == "expired" {
-            return String(localized: "期限が過ぎました。再設定しましょう")
-        } else {
-            return String(localized: "目標まであと\(entry.targetDiff, specifier: "%.1f") kg")
-        }
+    @ViewBuilder
+    private func statusBadge(for entry: ProgressEntry) -> some View {
+        let message: Text = {
+            if entry.goalStatus == "achieved" {
+                return entry.goalMode == "maintain" ? Text(String(localized: "目標体重を維持しています！")) : Text(String(localized: "目標達成！おめでとうございます！"))
+            } else if entry.goalStatus == "expired" {
+                return Text(String(localized: "期限が過ぎました。再設定しましょう"))
+            } else {
+                // 重要修正：Measurement API で単位を自動化し、一文として構成
+                let diffMeasurement = Measurement(value: entry.targetDiff, unit: UnitMass.kilograms)
+                let formattedDiff = diffMeasurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
+                // Catalogには「目標まであと %@」と登録され、%@ には "2.5 kg" 等が入る
+                return Text("目標まであと \(formattedDiff)")
+            }
+        }()
+        
+        message
+            .font(.system(size: 10, weight: .bold))
+            .padding(.horizontal, 8).padding(.vertical, 4)
+            .background(Capsule().fill(badgeColor(for: entry.goalStatus).opacity(0.15)))
+            .foregroundColor(badgeColor(for: entry.goalStatus))
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
     }
     
     private func ringGradient(for status: String) -> LinearGradient {
@@ -132,6 +144,7 @@ struct CalorieProgressWidget: Widget {
     let kind: String = "CalorieProgressWidget"
 
     var body: some WidgetConfiguration {
+        // 修正ポイント：Provider() ではなく ProgressProvider() を指定する
         StaticConfiguration(kind: kind, provider: ProgressProvider()) { entry in
             if #available(iOS 17.0, *) {
                 CalorieProgressWidgetEntryView(entry: entry)
@@ -141,33 +154,24 @@ struct CalorieProgressWidget: Widget {
                     .background(Color(UIColor.systemBackground))
             }
         }
-        .configurationDisplayName("達成率グラフ")
-        .description("現在の目標達成状況をグラフで確認します。")
+        .configurationDisplayName(String(localized: "達成率グラフ"))
+        .description(String(localized: "現在の目標達成状況をグラフで確認します。"))
         .supportedFamilies([.systemSmall])
     }
 }
 
-// --- Preview ---
-#Preview("1. 進行中", as: .systemSmall) {
+// --- Preview 部分 ---
+#Preview("Progress Widget", as: .systemSmall) {
     CalorieProgressWidget()
 } timeline: {
-    ProgressEntry(date: Date(), achievementRate: 0.65, maintenanceProgress: 0.5, goalMode: "lose", remainingDays: 24, targetDiff: 3.2, isGoalSet: true, goalStatus: "inProgress")
-}
-
-#Preview("2. 達成済み", as: .systemSmall) {
-    CalorieProgressWidget()
-} timeline: {
-    ProgressEntry(date: Date(), achievementRate: 1.0, maintenanceProgress: 1.0, goalMode: "lose", remainingDays: 10, targetDiff: 0.0, isGoalSet: true, goalStatus: "achieved")
-}
-
-#Preview("3. 期限切れ", as: .systemSmall) {
-    CalorieProgressWidget()
-} timeline: {
-    ProgressEntry(date: Date(), achievementRate: 0.4, maintenanceProgress: 1.0, goalMode: "lose", remainingDays: 0, targetDiff: 5.0, isGoalSet: true, goalStatus: "expired")
-}
-
-#Preview("4. 目標なし", as: .systemSmall) {
-    CalorieProgressWidget()
-} timeline: {
-    ProgressEntry(date: Date(), achievementRate: 0.0, maintenanceProgress: 0.0, goalMode: "未設定", remainingDays: 0, targetDiff: 0.0, isGoalSet: false, goalStatus: "inProgress")
+    ProgressEntry(
+        date: Date(),
+        achievementRate: 0.7,
+        maintenanceProgress: 0.5,
+        goalMode: "lose",
+        remainingDays: 20,
+        targetDiff: 3.2,
+        isGoalSet: true,
+        goalStatus: "inProgress"
+    )
 }

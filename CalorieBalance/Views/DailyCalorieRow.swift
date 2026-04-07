@@ -21,9 +21,13 @@ struct DailyCalorieRow: View {
                 // 消費カロリー
                 VStack(alignment: .leading) {
                     Text("消費カロリー").font(.caption).foregroundColor(.secondary)
-                    // totalBurnedCalories が nil なら "--"
-                    Text(data.totalBurnedCalories != nil ? "\(Int(data.totalBurnedCalories!)) kcal" : "-- kcal")
-                        .font(.subheadline).bold()
+                    if let burned = data.totalBurnedCalories {
+                        // 数値と単位を分離（Interpolationを使用）
+                        Text("\(Int(burned)) kcal")
+                            .font(.subheadline).bold()
+                    } else {
+                        Text("-- kcal").font(.subheadline).bold()
+                    }
                 }
                 
                 Spacer()
@@ -31,10 +35,15 @@ struct DailyCalorieRow: View {
                 // 収支
                 VStack(alignment: .center) {
                     Text("収支").font(.caption).foregroundColor(.secondary)
-                    // netCalories が nil なら "--"
-                    Text(data.netCalories != nil ? "\(Int(data.netCalories!))" : "--")
-                        .font(.title).bold()
-                        .foregroundColor(data.netColor)
+                    Group {
+                        if let netCalories = data.netCalories {
+                            Text("\(Int(netCalories)) kcal")
+                        } else {
+                            Text("-- kcal")
+                        }
+                    }
+                    .font(.title).bold()
+                    .foregroundColor(data.netColor)
                 }
                 
                 Spacer()
@@ -42,20 +51,21 @@ struct DailyCalorieRow: View {
                 // 摂取カロリー
                 VStack(alignment: .trailing) {
                     Text("摂取カロリー").font(.caption).foregroundColor(.secondary)
-                    Text(data.dietaryCalories != nil ? "\(Int(data.dietaryCalories!))kcal" : "-- kcal")
-                        .font(.subheadline).bold()
+                    if let dietary = data.dietaryCalories {
+                        // 数値と単位を分離
+                        Text("\(Int(dietary)) kcal")
+                            .font(.subheadline).bold()
+                    } else {
+                        Text("-- kcal").font(.subheadline).bold()
+                    }
                 }
             }
         }
         .padding(.vertical, 5)
     }
-        
+    
     private func formatDate(_ date: Date) -> String {
-        let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "ja_JP")
-        formatter.dateStyle = .medium
-        formatter.timeStyle = .none
-        return formatter.string(from: date)
+        return date.formatted(.dateTime.year().month().day())
     }
 }
 

@@ -45,7 +45,8 @@ class HealthKitManager {
         async let dietaryDict = fetchStatisticsCollection(for: .dietaryEnergyConsumed, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         async let stepDict = fetchStatisticsCollection(for: .stepCount, unit: .count(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         async let sleepDict = fetchSleepDuration(start: anchorDate, end: endDate)
-        async let massDict = fetchStatisticsCollection(for: .bodyMass, unit: .gramUnit(with: .kilo), options: .mostRecent, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
+        // 修正：体重取得時の単位を .gramUnit(with: .kilo) に変更（より確実な指定方法）
+        async let massDict = fetchStatisticsCollection(for: .bodyMass, unit: HKUnit.gramUnit(with: .kilo), options: .mostRecent, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         
         let active = try await activeDict
         let resting = try await restingDict
@@ -58,13 +59,14 @@ class HealthKitManager {
         var currentDate = anchorDate
         
         while currentDate <= endDate {
-            let aCal = active[currentDate] ?? nil
-            let rCal = resting[currentDate] ?? nil
-            let dCal = dietary[currentDate] ?? nil
-            let stepCount = step[currentDate].flatMap { Int($0)} ?? nil
-            let sleepAnalysis = sleep[currentDate] ?? nil
-            let bodyMass = mass[currentDate] ?? nil
+            let aCal = active[currentDate]
+            let rCal = resting[currentDate]
+            let dCal = dietary[currentDate]
+            let stepCount = step[currentDate].flatMap { Int($0) }
+            let sleepAnalysis = sleep[currentDate]
+            let bodyMass = mass[currentDate]
             
+            // 修正：最後の引数の後の不要なカンマを削除
             let data = DailyMetrics(
                 date: currentDate,
                 activeCalories: aCal,
@@ -72,7 +74,7 @@ class HealthKitManager {
                 dietaryCalories: dCal,
                 steps: stepCount,
                 sleepSeconds: sleepAnalysis,
-                weight: bodyMass,
+                weight: bodyMass
             )
             results.append(data)
             
@@ -86,7 +88,7 @@ class HealthKitManager {
     private func fetchStatisticsCollection(
         for identifier: HKQuantityTypeIdentifier,
         unit: HKUnit,
-        options: HKStatisticsOptions,//オプションで合計か最新値かを選ぶ
+        options: HKStatisticsOptions,
         predicate: NSPredicate,
         anchor: Date,
         interval: DateComponents,
@@ -109,7 +111,6 @@ class HealthKitManager {
                 var dailySums: [Date: Double] = [:]
                 collection?.enumerateStatistics(from: startDate, to: endDate) { statistics, _ in
                     let quantity = (options == .cumulativeSum) ? statistics.sumQuantity() : statistics.mostRecentQuantity()
-                    //データがある時だけ辞書に入れる
                     if let quantity = quantity {
                         dailySums[statistics.startDate] = quantity.doubleValue(for: unit)
                     }
@@ -121,6 +122,7 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
+
     private func fetchSleepDuration(start: Date, end: Date) async throws -> [Date: Double] {
         let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
         let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
@@ -142,7 +144,8 @@ class HealthKitManager {
     
     func saveWeight(weight: Double, date: Date) async throws {
         guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
-        let quantity = HKQuantity(unit: .gramUnit(with: .kilo), doubleValue: weight)
+        // 修正：.kilogram() ではなく HKUnit.gramUnit(with: .kilo) を明示的に使用
+        let quantity = HKQuantity(unit: HKUnit.gramUnit(with: .kilo), doubleValue: weight)
         let sample = HKQuantitySample(type: type, quantity: quantity, start: date, end: date)
         try await healthStore.save(sample)
     }
@@ -157,7 +160,6 @@ class HealthKitManager {
     func saveSleep(start: Date, end: Date) async throws {
         guard let sleepType = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
         
-        // 修正箇所：.allAsleep ではなく .asleepUnspecified を使用
         let sample = HKCategorySample(
             type: sleepType,
             value: HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue,
@@ -168,27 +170,20 @@ class HealthKitManager {
         try await healthStore.save(sample)
     }
     
-    // MARK: - データの削除
-        
-    /// 指定した日の、このアプリが記録した「数値データ（カロリー・体重など）」を削除
     func deleteQuantityData(for identifier: HKQuantityTypeIdentifier, on date: Date) async throws {
         guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return }
         
         let startOfDay = Calendar.current.startOfDay(for: date)
         guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
         
-        // 条件1：対象の日付
         let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
-        // 条件2：このアプリ（自分自身）が書き込んだデータのみ
         let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
         
         let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
         
-        // 条件に合致するデータをHealthKitから削除
         try await healthStore.deleteObjects(of: type, predicate: predicate)
     }
 
-    /// 指定した日の、このアプリが記録した「睡眠データ」を削除
     func deleteSleepData(on date: Date) async throws {
         guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
         
@@ -202,4 +197,3 @@ class HealthKitManager {
         try await healthStore.deleteObjects(of: type, predicate: predicate)
     }
 }
-

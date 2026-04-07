@@ -5,24 +5,23 @@
 //  Created by Soichiro Yuhara on 2026/03/18.
 //
 
-// GraphView.swift
-
-// グラフ画面統括
 import SwiftUI
 import Charts
 
 struct GraphView: View {
     @ObservedObject var viewModel: CalorieBalanceViewModel
     @AppStorage("dietStartDate") private var dietStartDate: Date?
-    // 全グラフ共通の開始日。これを各ChartCardに渡すことで一括連動を実現します。
+    
+    // 全グラフ共通の開始日
     @State private var graphStartDate: Date
+    
     init(viewModel: CalorieBalanceViewModel) {
         self.viewModel = viewModel
         
-        // UserDefaultsからTimeIntervalとして取得
-        let interval = UserDefaults.standard.double(forKey: "dietStartDate")
+        // 修正：共有の UserDefaults (SuiteName) から取得するように安全策を講じる
+        let sharedDefaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance")
+        let interval = sharedDefaults?.double(forKey: "dietStartDate") ?? 0
         
-        // 値が0（未保存）の場合はデフォルト（29日前）を生成、ある場合はその値からDateを作成
         let initialDate: Date
         if interval == 0 {
             initialDate = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
@@ -32,21 +31,23 @@ struct GraphView: View {
         
         _graphStartDate = State(initialValue: initialDate)
     }
-    @State private var selectedDate: Date? = nil//グラフタップでデータ出すやつの日付を保持
+    
+    @State private var selectedDate: Date? = nil
     
     var body: some View {
-        NavigationStack{
-            ZStack{
+        NavigationStack {
+            ZStack {
                 AdvancedBackgroundView()
+                
                 ScrollView {
                     VStack(spacing: 24) {
-                        // サマリーヘッダー
+                        // サマリーヘッダー（月選択は非表示）
                         SummaryHeaderView(viewModel: viewModel, showMonthPicker: false)
                             .glassEffect(in: .rect(cornerRadius: 30.0))
                         
                         // 体重グラフ
-                        // すべてのChartCardに $graphStartDate を渡せば、どれかを変えると全部変わります
-                        ChartCard(title: "体重", startDate: $graphStartDate) { newValue in
+                        // 修正：タイトルを多言語化
+                        ChartCard(title: String(localized: "体重"), startDate: $graphStartDate) { newValue in
                             viewModel.requestAccessAndFetchData(customStartDate: newValue)
                         } content: {
                             WeightTrendChart(
@@ -56,7 +57,9 @@ struct GraphView: View {
                             )
                         }
                         
-                        ChartCard(title: "カロリー収支", startDate: $graphStartDate) { newValue in
+                        // カロリー収支グラフ
+                        // 修正：タイトルを多言語化
+                        ChartCard(title: String(localized: "カロリー収支"), startDate: $graphStartDate) { newValue in
                             viewModel.requestAccessAndFetchData(customStartDate: newValue)
                         } content: {
                             CalorieTrendChart(
@@ -66,7 +69,9 @@ struct GraphView: View {
                             )
                         }
                         
-                        ChartCard(title: "睡眠と日次カロリー収支", startDate: $graphStartDate) { newValue in
+                        // 睡眠グラフ
+                        // 修正：タイトルを多言語化
+                        ChartCard(title: String(localized: "睡眠と日次カロリー収支"), startDate: $graphStartDate) { newValue in
                             viewModel.requestAccessAndFetchData(customStartDate: newValue)
                         } content: {
                             SleepTrendChart(
@@ -78,7 +83,8 @@ struct GraphView: View {
                     }
                     .padding()
                 }
-                .navigationTitle("Trend")
+                // 修正：ナビゲーションタイトルを多言語化
+                .navigationTitle(String(localized: "Trend"))
                 .toolbarTitleDisplayMode(.inlineLarge)
                 .refreshable {
                     await viewModel.refreshData()
@@ -88,7 +94,6 @@ struct GraphView: View {
     }
 }
 
-// 構造体の外に配置
 #Preview {
     GraphView(viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData))
 }

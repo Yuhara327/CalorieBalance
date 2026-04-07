@@ -115,17 +115,20 @@ class CalorieBalanceViewModel: ObservableObject {
     }
     
     var goalStatusMessage: String {
-        switch currentGoalStatus {
-        case .achieved:
-            return goalMode == .maintain ? "目標体重を維持しています！" : "目標達成！おめでとうございます！"
-        case .expired:
-            return "期限が過ぎました。目標を再設定しましょう！"
-        case .inProgress:
-            let diff = abs(targetWeight - effectiveCurrentWeight)
-            return String(format: "目標まであと%.1f kg", diff)
+            switch currentGoalStatus {
+            case .achieved:
+                return goalMode == .maintain ? String(localized: "目標体重を維持しています！") : String(localized: "目標達成！おめでとうございます！")
+            case .expired:
+                return String(localized: "期限が過ぎました。目標を再設定しましょう！")
+            case .inProgress:
+                // ここで "kg" を含めない。数値のフォーマットはView側か、このメソッド内でLocalizedStringKeyを生成して行う
+                let diff = abs(targetWeight - effectiveCurrentWeight)
+                let measurement = Measurement(value: diff, unit: UnitMass.kilograms)
+                // 単位付きの文字列を生成（OS設定に依存）
+                let formattedDiff = measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
+                return String(localized: "目標まであと \(formattedDiff)")
+            }
         }
-    }
-    
     var targetDate: Date {
         get { Date(timeIntervalSince1970: targetDateInterval) }
         set { targetDateInterval = newValue.timeIntervalSince1970 }

@@ -22,7 +22,10 @@ struct ChartCard<Content: View>: View {
                     .foregroundColor(.secondary)
                 
                 HStack {
-                    Text("開始日").font(.subheadline).foregroundColor(.secondary)
+                    // String(localized:) を使用して多言語化に対応
+                    Text(String(localized: "開始日"))
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
                     Spacer()
                     DatePicker("", selection: $startDate, displayedComponents: .date)
                         .labelsHidden()

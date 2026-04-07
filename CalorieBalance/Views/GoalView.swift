@@ -20,20 +20,16 @@ struct GoalView: View {
                 ScrollView {
                     VStack(spacing: 24) {
                         if viewModel.isGoalSet {
-                            // 状態（達成・期限切れ・進行中）に応じたトップセクション
                             statusHeaderSection
-                            
-                            // 共通：目標管理セクション
                             managementSection
                         } else {
-                            // 目標未設定時の表示
                             unsetPlaceholderView
                         }
                     }
                     .padding()
                 }
             }
-            .navigationTitle("Goal")
+            .navigationTitle(String(localized: "Goal"))
             .toolbarTitleDisplayMode(.inlineLarge)
             .sheet(isPresented: $isShowingSetup) {
                 GoalSetupView(viewModel: viewModel)
@@ -42,8 +38,6 @@ struct GoalView: View {
             }
         }
     }
-    
-    // MARK: - Subviews
     
     @ViewBuilder
     private var statusHeaderSection: some View {
@@ -57,7 +51,6 @@ struct GoalView: View {
         }
     }
     
-    // 1. 達成時のView
     private var achievedStatusView: some View {
         VStack(spacing: 20) {
             Image(systemName: "flag.pattern.checkered.2.crossed")
@@ -77,7 +70,7 @@ struct GoalView: View {
                 viewModel.prepareForReselectingGoal()
                 isShowingSetup = true
             } label: {
-                Text("次の目標を設定する")
+                Text(String(localized: "次の目標を設定する"))
                     .bold()
                     .padding(.horizontal, 24)
             }
@@ -87,17 +80,15 @@ struct GoalView: View {
         .frame(maxWidth: .infinity)
         .padding(.vertical, 32)
         .glassEffect(in: .rect(cornerRadius: 30.0))
-        .transition(.scale.combined(with: .opacity))
     }
     
-    // 2. 期限切れのView
     private var expiredStatusView: some View {
         VStack(spacing: 16) {
             Image(systemName: "calendar.badge.exclamationmark")
                 .font(.system(size: 50))
                 .foregroundColor(.orange)
             
-            Text("期限が終了しました")
+            Text(String(localized: "期限が終了しました"))
                 .font(.headline)
             
             Text(viewModel.goalStatusMessage)
@@ -105,7 +96,7 @@ struct GoalView: View {
                 .foregroundColor(.secondary)
                 .multilineTextAlignment(.center)
             
-            Button("目標を再設定") {
+            Button(String(localized: "目標を再設定")) {
                 viewModel.prepareForReselectingGoal()
                 isShowingSetup = true
             }
@@ -116,18 +107,17 @@ struct GoalView: View {
         .glassEffect(in: .rect(cornerRadius: 30.0))
     }
     
-    // 3. 進行中のView
     private var inProgressStatusView: some View {
         VStack(spacing: 24) {
-            // 今日の目標収支
             VStack(alignment: .leading, spacing: 12) {
-                Text("今日の目標")
+                Text(String(localized: "今日の目標"))
                     .font(.caption).bold()
                     .foregroundColor(.secondary)
                 
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
-                        Text("目標収支").font(.caption).foregroundColor(.secondary)
+                        Text(String(localized: "目標収支")).font(.caption).foregroundColor(.secondary)
+                        // 修正：一文として構成し、Catalogに "%lld kcal" を登録
                         Text("\(Int(viewModel.dailyTargetCalories)) kcal")
                             .font(.title2).bold()
                     }
@@ -140,14 +130,11 @@ struct GoalView: View {
             .padding()
             .background(Color.white.opacity(0.05), in: RoundedRectangle(cornerRadius: 20))
             
-            // 全体進捗グラフ / 残り日数
             VStack(spacing: 16) {
                 ZStack {
                     Circle()
                         .stroke(Color.white.opacity(0.1), lineWidth: 15)
                     
-                    // --- 共通：青い進捗リングを描画 ---
-                    // 分岐によって trim の 'to' に渡す値を切り替える
                     let progress = (viewModel.goalMode == .maintain) ? viewModel.maintenanceProgress : viewModel.achievementRate
                     
                     Circle()
@@ -157,30 +144,27 @@ struct GoalView: View {
                             style: StrokeStyle(lineWidth: 15, lineCap: .round)
                         )
                         .rotationEffect(.degrees(-90))
-                    // アニメーションは全モードで適用
-                        .animation(.spring(response: 0.6, dampingFraction: 0.8), value: progress)
                     
-                    // --- 中央のテキスト表示はモードで出し分け ---
                     if viewModel.goalMode == .maintain {
                         VStack(spacing: -4) {
-                            Text("\(viewModel.remainingDays)")
+                            Text(viewModel.remainingDays, format: .number)
                                 .font(.system(size: 54, weight: .bold, design: .rounded))
-                            Text("あと何日")
+                            // 修正：単体で意味をなすラベルにする
+                            Text(String(localized: "残り日数"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     } else {
-                        // 減量・増量：達成率(%)を表示
                         VStack {
+                            // 修正：数値と % を一文にする
                             Text("\(Int(viewModel.achievementRate * 100))%")
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                            Text("達成").font(.caption).foregroundColor(.secondary)
+                            Text(String(localized: "達成状況")).font(.caption).foregroundColor(.secondary)
                         }
                     }
                 }
                 .frame(width: 160, height: 160)
                 
-                // 下部のステータスメッセージ（既存のままでOK）
                 Text(viewModel.goalStatusMessage)
                     .font(.subheadline).bold()
                     .padding(.horizontal, 16).padding(.vertical, 8)
@@ -190,10 +174,10 @@ struct GoalView: View {
         .padding()
         .glassEffect(in: .rect(cornerRadius: 30.0))
     }
-    // 4. 管理セクション（共通）
+
     private var managementSection: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("目標管理")
+            Text(String(localized: "目標管理"))
                 .font(.caption).bold()
                 .foregroundColor(.secondary)
             
@@ -201,9 +185,12 @@ struct GoalView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(viewModel.goalMode.localizedName).bold()
-                        Text("\(viewModel.targetWeight, format: .number) kg まで")
+                        // 修正：Measurement API を使用して、Catalog から "kg" を一掃し lb 対応させる
+                        let targetMass = Measurement(value: viewModel.targetWeight, unit: UnitMass.kilograms)
+                        Text("目標: \(targetMass.formatted(.measurement(width: .abbreviated, usage: .personWeight)))")
                     }
-                    Text("達成期限: \(viewModel.targetDate, style: .date)")
+                    // 修正：一文として構成
+                    Text("達成期限: \(viewModel.targetDate.formatted(date: .numeric, time: .omitted))")
                         .font(.caption).foregroundColor(.secondary)
                 }
                 Spacer()
@@ -223,7 +210,7 @@ struct GoalView: View {
                     viewModel.startingWeight = 0
                 }
             } label: {
-                Text("目標を削除")
+                Text(String(localized: "目標を削除"))
                     .frame(maxWidth: .infinity)
                     .bold()
             }
@@ -233,7 +220,6 @@ struct GoalView: View {
         .glassEffect(in: .rect(cornerRadius: 30.0))
     }
     
-    // 5. 目標未設定時
     private var unsetPlaceholderView: some View {
         VStack(spacing: 24) {
             Image(systemName: "target")
@@ -241,9 +227,9 @@ struct GoalView: View {
                 .foregroundColor(.teal)
             
             VStack(spacing: 8) {
-                Text("目標が設定されていません")
+                Text(String(localized: "目標が設定されていません"))
                     .font(.headline)
-                Text("体重の目標を設定して、理想の体に近づきましょう。")
+                Text(String(localized: "体重の目標を設定して、理想の体に近づきましょう。"))
                     .font(.subheadline)
                     .multilineTextAlignment(.center)
                     .foregroundColor(.secondary)
@@ -253,7 +239,7 @@ struct GoalView: View {
                 isShowingSetup = true
                 viewModel.prepareForReselectingGoal()
             } label: {
-                Text("目標を設定する")
+                Text(String(localized: "目標を設定する"))
                     .bold()
                     .frame(maxWidth: .infinity)
                     .padding(.vertical, 8)
@@ -265,41 +251,4 @@ struct GoalView: View {
         .glassEffect(in: .rect(cornerRadius: 30.0))
         .padding(.top, 40)
     }
-}
-
-#Preview("進行中") {
-    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
-    // 直接値を設定（UserDefaultsに書き込まれるがプレビュー内なので安全）
-    viewModel.isGoalSet = true
-    viewModel.goalMode = .lose
-    viewModel.targetWeight = 60.0
-    viewModel.startingWeight = 75.0
-    // 期限を未来に設定
-    viewModel.targetDate = Calendar.current.date(byAdding: .day, value: 30, to: Date())!
-    
-    return GoalView(viewModel: viewModel)
-}
-
-#Preview("達成済み") {
-    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
-    viewModel.isGoalSet = true
-    viewModel.goalMode = .lose
-    // 現在の体重(mockは約65kg)より高い数値を目標にすれば達成判定になる
-    viewModel.targetWeight = 70.0
-    return GoalView(viewModel: viewModel)
-}
-
-#Preview("期限切れ") {
-    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
-    viewModel.isGoalSet = true
-    viewModel.goalMode = .lose
-    viewModel.targetWeight = 50.0 // 未達
-    // 期限を昨日に設定
-    viewModel.targetDate = Calendar.current.date(byAdding: .day, value: -1, to: Date())!
-    return GoalView(viewModel: viewModel)
-}
-
-#Preview {
-    let viewmodel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
-    return GoalView(viewModel: viewmodel)
 }
