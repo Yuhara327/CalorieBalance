@@ -10,10 +10,14 @@ import Charts
 
 struct GraphView: View {
     @ObservedObject var viewModel: CalorieBalanceViewModel
+    // 追加: 課金マネージャーを監視
+    @StateObject private var subManager = SubscriptionManager.shared
+    
     @AppStorage("dietStartDate") private var dietStartDate: Date?
     
     // 全グラフ共通の開始日
     @State private var graphStartDate: Date
+    @State private var selectedDate: Date? = nil
     
     init(viewModel: CalorieBalanceViewModel) {
         self.viewModel = viewModel
@@ -32,8 +36,6 @@ struct GraphView: View {
         _graphStartDate = State(initialValue: initialDate)
     }
     
-    @State private var selectedDate: Date? = nil
-    
     var body: some View {
         NavigationStack {
             ZStack {
@@ -45,20 +47,7 @@ struct GraphView: View {
                         SummaryHeaderView(viewModel: viewModel, showMonthPicker: false)
                             .glassEffect(in: .rect(cornerRadius: 30.0))
                         
-                        // 体重グラフ
-                        // 修正：タイトルを多言語化
-                        ChartCard(title: String(localized: "体重"), startDate: $graphStartDate) { newValue in
-                            viewModel.requestAccessAndFetchData(customStartDate: newValue)
-                        } content: {
-                            WeightTrendChart(
-                                viewModel: viewModel,
-                                graphStartDate: graphStartDate,
-                                selectedDate: $selectedDate
-                            )
-                        }
-                        
-                        // カロリー収支グラフ
-                        // 修正：タイトルを多言語化
+                        // 1. カロリー収支グラフ 【無料】 - 一番上に移動
                         ChartCard(title: String(localized: "カロリー収支"), startDate: $graphStartDate) { newValue in
                             viewModel.requestAccessAndFetchData(customStartDate: newValue)
                         } content: {
@@ -69,21 +58,51 @@ struct GraphView: View {
                             )
                         }
                         
-                        // 睡眠グラフ
-                        // 修正：タイトルを多言語化
+                        // 2. 体重グラフ 【有料(Pro)】
+                        ChartCard(title: String(localized: "体重"), startDate: $graphStartDate) { newValue in
+                            viewModel.requestAccessAndFetchData(customStartDate: newValue)
+                        } content: {
+                            ZStack {
+                                WeightTrendChart(
+                                    viewModel: viewModel,
+                                    graphStartDate: graphStartDate,
+                                    selectedDate: $selectedDate
+                                )
+                                // 未課金時はグラフをぼかして(opacity等で調整も可)オーバーレイを表示
+                                .blur(radius: subManager.isPremium ? 0 : 6)
+                                
+                                if !subManager.isPremium {
+                                    ProFeatureOverlay(
+                                        title: String(localized: "体重予測の解放"),
+                                        message: String(localized: "日々のカロリーから未来の体重を予測し、モチベーションを維持しましょう。")
+                                    )
+                                }
+                            }
+                        }
+                        
+                        // 3. 睡眠グラフ 【有料(Pro)】
                         ChartCard(title: String(localized: "睡眠と日次カロリー収支"), startDate: $graphStartDate) { newValue in
                             viewModel.requestAccessAndFetchData(customStartDate: newValue)
                         } content: {
-                            SleepTrendChart(
-                                viewModel: viewModel,
-                                graphStartDate: graphStartDate,
-                                selectedDate: $selectedDate
-                            )
+                            ZStack {
+                                SleepTrendChart(
+                                    viewModel: viewModel,
+                                    graphStartDate: graphStartDate,
+                                    selectedDate: $selectedDate
+                                )
+                                .blur(radius: subManager.isPremium ? 0 : 6)
+                                
+                                if !subManager.isPremium {
+                                    ProFeatureOverlay(
+                                        title: String(localized: "睡眠相関の解放"),
+                                        message: String(localized: "睡眠不足がダイエットに与える影響を分析し、最適な生活リズムを見つけましょう。")
+                                    )
+                                }
+                            }
                         }
                     }
                     .padding()
                 }
-                // 修正：ナビゲーションタイトルを多言語化
                 .navigationTitle(String(localized: "Trend"))
                 .toolbarTitleDisplayMode(.inlineLarge)
                 .refreshable {

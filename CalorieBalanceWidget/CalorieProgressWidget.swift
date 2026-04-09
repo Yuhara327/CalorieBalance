@@ -1,3 +1,10 @@
+//
+//  CalorieProgressWidget.swift
+//  CalorieBalance
+//
+//  Created by Soichiro Yuhara on [日付].
+//
+
 import WidgetKit
 import SwiftUI
 
@@ -46,52 +53,61 @@ struct ProgressEntry: TimelineEntry {
 // 3. View
 struct CalorieProgressWidgetEntryView : View {
     var entry: ProgressProvider.Entry
+    
+    // 追加: App Group 経由で課金状態を読み取る
+    @AppStorage("isPremium", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance"))
+    var isPremium: Bool = false
 
     var body: some View {
-        if entry.isGoalSet {
-            VStack(spacing: 8) {
-                ZStack {
-                    Circle()
-                        .stroke(Color.secondary.opacity(0.2), lineWidth: 10)
-                    
-                    let progress = (entry.goalMode == "maintain") ? entry.maintenanceProgress : entry.achievementRate
-                    
-                    Circle()
-                        .trim(from: 0, to: progress)
-                        .stroke(
-                            ringGradient(for: entry.goalStatus),
-                            style: StrokeStyle(lineWidth: 10, lineCap: .round)
-                        )
-                        .rotationEffect(.degrees(-90))
-                    
-                    VStack(spacing: -2) {
-                        if entry.goalStatus == "achieved" {
-                            Image(systemName: "checkmark")
-                                .font(.title2)
-                                .foregroundColor(.green)
-                        } else if entry.goalStatus == "expired" {
-                            Image(systemName: "exclamationmark")
-                                .font(.title2)
-                                .foregroundColor(.orange)
-                        } else {
-                            if entry.goalMode == "maintain" {
-                                // 重要修正：Catalogに「%lld 日」という一文を登録
-                                Text("\(entry.remainingDays) 日")
-                                    .font(.system(.title2, design: .rounded)).bold()
+        if isPremium {
+            // 【課金済み】通常の目標リングのUIを表示
+            if entry.isGoalSet {
+                VStack(spacing: 8) {
+                    ZStack {
+                        Circle()
+                            .stroke(Color.secondary.opacity(0.2), lineWidth: 15)
+                        
+                        let progress = (entry.goalMode == "maintain") ? entry.maintenanceProgress : entry.achievementRate
+                        
+                        Circle()
+                            .trim(from: 0, to: progress)
+                            .stroke(
+                                ringGradient(for: entry.goalStatus),
+                                style: StrokeStyle(lineWidth: 15, lineCap: .round)
+                            )
+                            .rotationEffect(.degrees(-90))
+                        
+                        VStack(spacing: -2) {
+                            if entry.goalStatus == "achieved" {
+                                Image(systemName: "checkmark")
+                                    .font(.title2)
+                                    .foregroundColor(.green)
+                            } else if entry.goalStatus == "expired" {
+                                Image(systemName: "exclamationmark")
+                                    .font(.title2)
+                                    .foregroundColor(.orange)
                             } else {
-                                // 重要修正：Catalogに「%lld%」という一文を登録
-                                Text("\(Int(entry.achievementRate * 100))%")
-                                    .font(.system(.title2, design: .rounded)).bold()
+                                if entry.goalMode == "maintain" {
+                                    Text("\(entry.remainingDays) 日")
+                                        .font(.system(.title2, design: .rounded)).bold()
+                                } else {
+                                    Text(entry.achievementRate, format: .percent.precision(.fractionLength(0)))
+                                        .font(.system(.title2, design: .rounded)).bold()
+                                }
                             }
                         }
                     }
+                    .frame(width: 83, height: 83)
+                    .padding()
+                    
+                    statusBadge(for: entry)
                 }
-                .frame(width: 80, height: 80)
-                
-                statusBadge(for: entry)
+            } else {
+                Text(String(localized: "目標未設定")).font(.caption).foregroundColor(.secondary)
             }
         } else {
-            Text(String(localized: "目標未設定")).font(.caption).foregroundColor(.secondary)
+            // 【未課金】ロック画面（ティーザーUI）を表示
+            WidgetProLockView()
         }
     }
     
@@ -105,16 +121,14 @@ struct CalorieProgressWidgetEntryView : View {
             } else if entry.goalStatus == "expired" {
                 return Text(String(localized: "期限が過ぎました。再設定しましょう"))
             } else {
-                // 重要修正：Measurement API で単位を自動化し、一文として構成
                 let diffMeasurement = Measurement(value: entry.targetDiff, unit: UnitMass.kilograms)
                 let formattedDiff = diffMeasurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
-                // Catalogには「目標まであと %@」と登録され、%@ には "2.5 kg" 等が入る
                 return Text("目標まであと \(formattedDiff)")
             }
         }()
         
         message
-            .font(.system(size: 10, weight: .bold))
+            .font(.system(size: 14, weight: .bold))
             .padding(.horizontal, 8).padding(.vertical, 4)
             .background(Capsule().fill(badgeColor(for: entry.goalStatus).opacity(0.15)))
             .foregroundColor(badgeColor(for: entry.goalStatus))
@@ -139,12 +153,34 @@ struct CalorieProgressWidgetEntryView : View {
     }
 }
 
+// 追加: ウィジェット専用のコンパクトなロック画面
+struct WidgetProLockView: View {
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: "lock.fill")
+                .font(.system(size: 32))
+                .foregroundStyle(
+                    LinearGradient(colors: [.teal, .blue], startPoint: .top, endPoint: .bottom)
+                )
+            
+            Text(String(localized: "Pro Plan"))
+                .font(.subheadline)
+                .bold()
+            
+            Text(String(localized: "目標機能は\nPro版限定です"))
+                .font(.caption2)
+                .multilineTextAlignment(.center)
+                .foregroundColor(.secondary)
+        }
+        .padding()
+    }
+}
+
 // 4. Widget Configuration
 struct CalorieProgressWidget: Widget {
     let kind: String = "CalorieProgressWidget"
 
     var body: some WidgetConfiguration {
-        // 修正ポイント：Provider() ではなく ProgressProvider() を指定する
         StaticConfiguration(kind: kind, provider: ProgressProvider()) { entry in
             if #available(iOS 17.0, *) {
                 CalorieProgressWidgetEntryView(entry: entry)
@@ -155,14 +191,16 @@ struct CalorieProgressWidget: Widget {
             }
         }
         .configurationDisplayName(String(localized: "達成率グラフ"))
-        .description(String(localized: "現在の目標達成状況をグラフで確認します。"))
+        .description(String(localized: "現在の目標達成状況をグラフで確認します。(Pro版限定)"))
         .supportedFamilies([.systemSmall])
     }
 }
 
 // --- Preview 部分 ---
-#Preview("Progress Widget", as: .systemSmall) {
-    CalorieProgressWidget()
+#Preview("Progress Widget (Premium)", as: .systemSmall) {
+    // プレビュー環境で課金状態をシミュレート
+    UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.set(true, forKey: "isPremium")
+    return CalorieProgressWidget()
 } timeline: {
     ProgressEntry(
         date: Date(),
@@ -172,6 +210,23 @@ struct CalorieProgressWidget: Widget {
         remainingDays: 20,
         targetDiff: 3.2,
         isGoalSet: true,
+        goalStatus: "inProgress"
+    )
+}
+
+#Preview("Progress Widget (Locked)", as: .systemSmall) {
+    // プレビュー環境で未課金状態をシミュレート
+    UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.set(false, forKey: "isPremium")
+    return CalorieProgressWidget()
+} timeline: {
+    ProgressEntry(
+        date: Date(),
+        achievementRate: 0.0,
+        maintenanceProgress: 0.0,
+        goalMode: "lose",
+        remainingDays: 0,
+        targetDiff: 0.0,
+        isGoalSet: false,
         goalStatus: "inProgress"
     )
 }

@@ -21,6 +21,9 @@ struct SleepTrendChart: View {
         let sleepMax = 13.0
         let sleepScaleFactor = (calorieRange * 2.0) / sleepMax
         
+        // 【修正】グラフの右端を「明日の0時」に設定し、今日の棒グラフが右に突き抜けるのを防ぐ
+        let chartEndDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+        
         let correlationValue: Double? = {
             let validData = trendData.filter { $0.sleep > 0 }
             guard validData.count > 2 else { return nil }
@@ -46,7 +49,10 @@ struct SleepTrendChart: View {
             }
 
             if trendData.isEmpty {
-                Text(String(localized: "この期間のデータがありません")).foregroundColor(.secondary).frame(height: 250)
+                Text(String(localized: "この期間のデータがありません"))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 250)
             } else {
                 Chart {
                     ForEach(trendData) { item in
@@ -70,7 +76,8 @@ struct SleepTrendChart: View {
                     }
                 }
                 .chartXSelection(value: $selectedDate)
-                .chartXScale(domain: graphStartDate...Date())
+                // 【修正適用】右端を chartEndDate にする
+                .chartXScale(domain: graphStartDate...chartEndDate)
                 .chartXAxis {
                     AxisMarks(values: axisValues) { value in
                         if let date = value.as(Date.self) {
@@ -94,8 +101,6 @@ struct SleepTrendChart: View {
                             AxisValueLabel {
                                 let h = (calorieRange - yVal) / sleepScaleFactor
                                 if h.isFinite {
-                                    // 修正：\(Text("h")) を使わず、一つの文字列リテラルとして定義する
-                                    // これにより Catalog には "h" というキーが独立して残ります
                                     Text("\(h, format: .number.precision(.fractionLength(0))) h")
                                         .foregroundColor(.indigo)
                                 } else {
@@ -138,7 +143,6 @@ struct SleepTrendChart: View {
                         .font(.subheadline).bold()
                         .foregroundColor(r <= -0.2 ? .green : (r >= 0.2 ? .orange : .primary))
 
-                    // 修正：文章を一続きにして、%@ %@ の発生を防ぐ
                     Text("相関係数 r = \(r, format: .number.precision(.fractionLength(2)))")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -149,11 +153,14 @@ struct SleepTrendChart: View {
                         .padding(.top, 2)
                 }
                 .padding()
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondary.opacity(0.1))
                 .cornerRadius(12)
             }
         }
     }
+    
+    // MARK: - Helper Methods
     
     private func popoverView(data: SleepChartData) -> some View {
         VStack(alignment: .leading, spacing: 4) {
@@ -174,7 +181,6 @@ struct SleepTrendChart: View {
                 .foregroundColor(color)
             
             if title == String(localized: "睡眠") {
-                // 修正：文章を一続きにする
                 Text("\(value, format: .number.precision(.fractionLength(1))) h")
                     .font(.system(size: 15, weight: .bold, design: .monospaced))
             } else {
@@ -235,14 +241,13 @@ struct SleepTrendChart: View {
         return dates
     }
 }
+
 #Preview {
-    // プレビュー用に一時的な状態を保持する場所がないため、
-    // シンプルに表示を確認するだけなら .constant を使います。
     SleepTrendChart(
         viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData),
         graphStartDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
-        selectedDate: .constant(nil) // Bindingへの暫定対応
+        selectedDate: .constant(nil)
     )
     .padding()
-    .background(Color.black.opacity(0.1)) // グラフを見やすくするための背景
+    .background(Color.black.opacity(0.1))
 }

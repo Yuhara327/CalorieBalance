@@ -19,6 +19,9 @@ struct CalorieTrendChart: View {
         let dailyMax = trendData.map { abs($0.dailyNet) }.max() ?? 1000
         let cumulativeMax = trendData.map { abs($0.cumulativeNet) }.max() ?? 1000
         
+        // 【修正1】グラフの右端を「明日の0時」に設定し、今日の棒グラフが右に突き抜けるのを防ぐ
+        let chartEndDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
+        
         let dynamicScaleFactor: Double = {
             if dailyMax > 0 {
                 return max(cumulativeMax / dailyMax, 1.0)
@@ -37,35 +40,54 @@ struct CalorieTrendChart: View {
             }
             
             if trendData.isEmpty {
-                Text(String(localized: "この期間のデータがありません")).foregroundColor(.secondary).frame(height: 250)
+                Text(String(localized: "この期間のデータがありません"))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(height: 250)
             } else {
                 Chart {
                     ForEach(trendData) { item in
-                        BarMark(x: .value("日付", item.date, unit: .day), y: .value("日次", item.dailyNet))
-                            .foregroundStyle(item.dailyNet <= 0 ? .green : .red)
+                        BarMark(
+                            x: .value("日付", item.date, unit: .day),
+                            y: .value("日次", item.dailyNet)
+                        )
+                        .foregroundStyle(item.dailyNet <= 0 ? .green : .red)
                     }
+                    
                     RuleMark(y: .value("平均", averageNet))
                         .foregroundStyle(.primary)
                         .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
                         .annotation(position: .top, alignment: .trailing) {
-                            // 修正：ラベルと数値を一文にする
                             Text("平均: \(averageNet, format: .number.precision(.fractionLength(0)))")
                                 .font(.caption)
                                 .foregroundColor(.primary)
                         }
+                    
                     ForEach(trendData) { item in
-                        LineMark(x: .value("日付", item.date, unit: .day), y: .value("合計", item.cumulativeNet / dynamicScaleFactor), series: .value("系列", "合計収支"))
-                            .foregroundStyle(.orange)
-                        PointMark(x: .value("日付", item.date, unit: .day), y: .value("合計", item.cumulativeNet / dynamicScaleFactor))
-                            .foregroundStyle(.orange).symbolSize(30)
+                        LineMark(
+                            x: .value("日付", item.date, unit: .day),
+                            y: .value("合計", item.cumulativeNet / dynamicScaleFactor),
+                            series: .value("系列", "合計収支")
+                        )
+                        .foregroundStyle(.orange)
+                        
+                        PointMark(
+                            x: .value("日付", item.date, unit: .day),
+                            y: .value("合計", item.cumulativeNet / dynamicScaleFactor)
+                        )
+                        .foregroundStyle(.orange)
+                        .symbolSize(30)
                     }
+                    
                     if let selectedDate {
                         RuleMark(x: .value("Selected", selectedDate, unit: .day))
-                            .foregroundStyle(.separator).zIndex(-1)
+                            .foregroundStyle(.separator)
+                            .zIndex(-1)
                     }
                 }
                 .chartXSelection(value: $selectedDate)
-                .chartXScale(domain: graphStartDate...Date())
+                // 【修正1適用】右端を chartEndDate にする
+                .chartXScale(domain: graphStartDate...chartEndDate)
                 .chartXAxis {
                     AxisMarks(values: axisValues) { value in
                         if let date = value.as(Date.self) {
@@ -92,7 +114,6 @@ struct CalorieTrendChart: View {
                     AxisMarks(position: .trailing, values: .automatic) { value in
                         if let kcal = value.as(Double.self) {
                             AxisValueLabel {
-                                // 修正：数値と単位を一つの Text で管理
                                 let kValue = Int(kcal * dynamicScaleFactor / 1000)
                                 Text("\(kValue)k")
                                     .foregroundColor(.orange)
@@ -111,6 +132,7 @@ struct CalorieTrendChart: View {
                     }
                 }
             }
+            
             if !trendData.isEmpty {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(spacing: 6) {
@@ -124,7 +146,6 @@ struct CalorieTrendChart: View {
                         .font(.subheadline).bold()
                         .foregroundColor(averageNet <= 0 ? .green : .red)
 
-                    // 重要修正：細切れにせず一文にする。Catalogには「この期間の1日平均は %f kcal です。」と登録されます。
                     Text("この期間の1日平均は \(averageNet, format: .number.precision(.fractionLength(0)).sign(strategy: .always())) kcal です。")
                         .font(.caption)
                         .foregroundColor(.secondary)
@@ -135,28 +156,37 @@ struct CalorieTrendChart: View {
                         .padding(.top, 2)
                 }
                 .padding()
+                // 【修正2】カードを画面幅いっぱいまで広げ、中のテキストを左寄せに保つ
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondary.opacity(0.1))
                 .cornerRadius(12)
             }
         }
     }
     
+    // MARK: - Helper Methods
+    
     private func popoverView(data: CalorieChartData) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(data.date, format: .dateTime.month().day().weekday()).font(.system(size: 15, weight: .bold))
+            Text(data.date, format: .dateTime.month().day().weekday())
+                .font(.system(size: 15, weight: .bold))
             HStack(spacing: 12) {
                 popoverValueStack(title: String(localized: "合計収支"), value: data.cumulativeNet, color: .orange)
                 let dailyColor: Color = data.dailyNet <= 0 ? .green : .red
                 popoverValueStack(title: String(localized: "日次収支"), value: data.dailyNet, color: dailyColor)
             }
         }
-        .padding(8).background(.ultraThinMaterial).cornerRadius(8).shadow(radius: 2)
+        .padding(8)
+        .background(.ultraThinMaterial)
+        .cornerRadius(8)
+        .shadow(radius: 2)
     }
     
     private func popoverValueStack(title: String, value: Double, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(title).font(.system(size: 12)).foregroundColor(color)
-            // 修正：ここも一つの文章として扱い、翻訳者が順序を変えられるようにする
+            Text(title)
+                .font(.system(size: 12))
+                .foregroundColor(color)
             Text("\(Int(value)) kcal")
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
         }
@@ -179,7 +209,10 @@ struct CalorieTrendChart: View {
                     .fill(color.opacity(0.8))
                     .frame(width: 12, height: 12)
             }
-            Text(label).font(.caption).fontWeight(.medium).foregroundColor(.secondary)
+            Text(label)
+                .font(.caption)
+                .fontWeight(.medium)
+                .foregroundColor(.secondary)
         }
     }
     
@@ -189,6 +222,7 @@ struct CalorieTrendChart: View {
         var currentDate = calendar.startOfDay(for: graphStartDate)
         let endDate = calendar.startOfDay(for: Date())
         let daysCount = calendar.dateComponents([.day], from: startDate, to: endDate).day ?? 30
+        
         let dynamicStride: Int = {
             if daysCount <= 14 { return 2 }
             if daysCount <= 45 { return 5 }
@@ -213,14 +247,13 @@ struct CalorieTrendChart: View {
         return dates
     }
 }
+
 #Preview {
-    // プレビュー用に一時的な状態を保持する場所がないため、
-    // シンプルに表示を確認するだけなら .constant を使います。
     CalorieTrendChart(
         viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData),
         graphStartDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
-        selectedDate: .constant(nil) // Bindingへの暫定対応
+        selectedDate: .constant(nil)
     )
     .padding()
-    .background(Color.black.opacity(0.1)) // グラフを見やすくするための背景
+    .background(Color.black.opacity(0.1))
 }

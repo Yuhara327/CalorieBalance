@@ -9,6 +9,9 @@ import SwiftUI
 
 struct GoalView: View {
     @ObservedObject var viewModel: CalorieBalanceViewModel
+    // 追加：課金状態の監視
+    @StateObject private var subManager = SubscriptionManager.shared
+    
     @State private var isShowingSetup = false
     
     var body: some View {
@@ -17,6 +20,7 @@ struct GoalView: View {
                 AdvancedBackgroundView()
                     .ignoresSafeArea()
                 
+                // --- メインコンテンツ（未課金時はぼかして触れなくする） ---
                 ScrollView {
                     VStack(spacing: 24) {
                         if viewModel.isGoalSet {
@@ -27,6 +31,16 @@ struct GoalView: View {
                         }
                     }
                     .padding()
+                }
+                .blur(radius: subManager.isPremium ? 0 : 8)
+                .disabled(!subManager.isPremium)
+                
+                // --- 課金誘導オーバーレイ ---
+                if !subManager.isPremium {
+                    ProFeatureOverlay(
+                        title: String(localized: "目標管理の解放"),
+                        message: String(localized: "あなた専用の目標を設定し、進捗リングで\n成果を可視化しましょう。\n目標を持つことがダイエット成功への最短ルートです。")
+                    )
                 }
             }
             .navigationTitle(String(localized: "Goal"))
@@ -117,7 +131,6 @@ struct GoalView: View {
                 HStack {
                     VStack(alignment: .leading, spacing: 4) {
                         Text(String(localized: "目標収支")).font(.caption).foregroundColor(.secondary)
-                        // 修正：一文として構成し、Catalogに "%lld kcal" を登録
                         Text("\(Int(viewModel.dailyTargetCalories)) kcal")
                             .font(.title2).bold()
                     }
@@ -149,15 +162,13 @@ struct GoalView: View {
                         VStack(spacing: -4) {
                             Text(viewModel.remainingDays, format: .number)
                                 .font(.system(size: 54, weight: .bold, design: .rounded))
-                            // 修正：単体で意味をなすラベルにする
                             Text(String(localized: "残り日数"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
                     } else {
                         VStack {
-                            // 修正：数値と % を一文にする
-                            Text("\(Int(viewModel.achievementRate * 100))%")
+                            Text(viewModel.achievementRate, format: .percent.precision(.fractionLength(0)))
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
                             Text(String(localized: "達成状況")).font(.caption).foregroundColor(.secondary)
                         }
@@ -185,11 +196,9 @@ struct GoalView: View {
                 VStack(alignment: .leading, spacing: 4) {
                     HStack {
                         Text(viewModel.goalMode.localizedName).bold()
-                        // 修正：Measurement API を使用して、Catalog から "kg" を一掃し lb 対応させる
                         let targetMass = Measurement(value: viewModel.targetWeight, unit: UnitMass.kilograms)
                         Text("目標: \(targetMass.formatted(.measurement(width: .abbreviated, usage: .personWeight)))")
                     }
-                    // 修正：一文として構成
                     Text("達成期限: \(viewModel.targetDate.formatted(date: .numeric, time: .omitted))")
                         .font(.caption).foregroundColor(.secondary)
                 }
@@ -252,6 +261,8 @@ struct GoalView: View {
         .padding(.top, 40)
     }
 }
+
+// プレビュー群
 #Preview("目標未設定") {
     let viewModel = CalorieBalanceViewModel()
     viewModel.isGoalSet = false
@@ -266,8 +277,6 @@ struct GoalView: View {
     viewModel.startingWeight = 75.0
     viewModel.targetWeight = 70.0
     viewModel.targetDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
-    // 現在の進捗をシミュレート（例: 72.5kg = 50%達成）
-    // viewModel側の計算ロジックに基づき表示されます
     
     return GoalView(viewModel: viewModel)
 }
@@ -287,8 +296,6 @@ struct GoalView: View {
 #Preview("目標達成！") {
     let viewModel = CalorieBalanceViewModel()
     viewModel.isGoalSet = true
-    // ここで viewModel.currentGoalStatus が .achieved になるようなデータをセット
-    // （例：目標70kgに対し、現在の実測値が70kg以下）
     viewModel.targetWeight = 70.0
     
     return GoalView(viewModel: viewModel)

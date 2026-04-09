@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		A6B52E8D2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */; };
+		A6B52E8E2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */; };
 		A6D086462F7EB64F00A325C6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086452F7EB64F00A325C6 /* WidgetKit.framework */; };
 		A6D086482F7EB64F00A325C6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086472F7EB64F00A325C6 /* SwiftUI.framework */; };
 		A6D086582F7EB65000A325C6 /* CalorieBalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -40,6 +42,7 @@
 
 /* Begin PBXFileReference section */
 		A69295702F61B6CF00B99F08 /* CalorieBalance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalorieBalance.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Subscriptions.storekit; sourceTree = "<group>"; };
 		A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorieBalanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A6D086452F7EB64F00A325C6 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A6D086472F7EB64F00A325C6 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -114,6 +117,7 @@
 		A69295672F61B6CF00B99F08 = {
 			isa = PBXGroup;
 			children = (
+				A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */,
 				A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */,
 				A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */,
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
@@ -198,7 +202,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 2630;
-				LastUpgradeCheck = 2630;
+				LastUpgradeCheck = 2640;
 				TargetAttributes = {
 					A692956F2F61B6CF00B99F08 = {
 						CreatedOnToolsVersion = 26.3;
@@ -241,6 +245,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6ED5EDC2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
+				A6B52E8E2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -249,6 +254,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6ED5EDD2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
+				A6B52E8D2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -285,6 +291,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -315,6 +322,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -338,6 +346,7 @@
 				MTL_FAST_MATH = YES;
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -349,6 +358,7 @@
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_LOCALIZABILITY_NONLOCALIZED = YES;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
@@ -379,6 +389,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_USER_SCRIPT_SANDBOXING = YES;
@@ -395,6 +406,7 @@
 				MTL_ENABLE_DEBUG_INFO = NO;
 				MTL_FAST_MATH = YES;
 				SDKROOT = iphoneos;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				SWIFT_COMPILATION_MODE = wholemodule;
 				SWIFT_EMIT_LOC_STRINGS = YES;
 				VALIDATE_PRODUCT = YES;
@@ -409,7 +421,6 @@
 				CODE_SIGN_ENTITLEMENTS = CalorieBalance/CalorieBalance.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CalorieBalance/Info.plist;
@@ -445,7 +456,6 @@
 				CODE_SIGN_ENTITLEMENTS = CalorieBalance/CalorieBalance.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CalorieBalance/Info.plist;
@@ -481,7 +491,6 @@
 				CODE_SIGN_ENTITLEMENTS = CalorieBalanceWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CalorieBalanceWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CalorieBalanceWidget;
@@ -512,7 +521,6 @@
 				CODE_SIGN_ENTITLEMENTS = CalorieBalanceWidgetExtension.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = 595NJ6N7F6;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = CalorieBalanceWidget/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = CalorieBalanceWidget;

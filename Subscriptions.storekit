@@ -1,0 +1,118 @@
+{
+  "appPolicies" : {
+    "eula" : "",
+    "policies" : [
+      {
+        "locale" : "en_US",
+        "policyText" : "",
+        "policyURL" : ""
+      }
+    ]
+  },
+  "identifier" : "CB71C894",
+  "nonRenewingSubscriptions" : [
+
+  ],
+  "products" : [
+
+  ],
+  "settings" : {
+    "_askToBuyEnabled" : false,
+    "_billingGracePeriodEnabled" : false,
+    "_billingIssuesEnabled" : false,
+    "_disableDialogs" : false,
+    "_failTransactionsEnabled" : false,
+    "_locale" : "ja",
+    "_renewalBillingIssuesEnabled" : false,
+    "_storefront" : "JPN",
+    "_storeKitErrors" : [
+
+    ],
+    "_timeRate" : 0
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "F7E14CB3",
+      "localizations" : [
+
+      ],
+      "name" : "ProPlan",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "400",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "67AE2503",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "全てのPro機能を利用可能。",
+              "displayName" : "年額プラン",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "com.yuhara.CalorieBalance.monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "MonthlyPlan",
+          "subscriptionGroupID" : "F7E14CB3",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        },
+        {
+          "adHocOffers" : [
+
+          ],
+          "codeOffers" : [
+
+          ],
+          "displayPrice" : "4000",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "F5330312",
+          "introductoryOffers" : [
+
+          ],
+          "localizations" : [
+            {
+              "description" : "",
+              "displayName" : "",
+              "locale" : "en_US"
+            },
+            {
+              "description" : "全てのPro機能を利用可能。",
+              "displayName" : "月額プラン",
+              "locale" : "ja"
+            }
+          ],
+          "productID" : "com.yuhara.CalorieBalance.yearly",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "YearlyPlan",
+          "subscriptionGroupID" : "F7E14CB3",
+          "type" : "RecurringSubscription",
+          "winbackOffers" : [
+
+          ]
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 5,
+    "minor" : 0
+  }
+}

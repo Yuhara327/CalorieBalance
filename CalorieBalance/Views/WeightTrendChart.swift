@@ -20,6 +20,9 @@ struct WeightTrendChart: View {
         let axisValues = calculateAxisValues(startDate: safeStartDate)
         let latestCompleteData = trendData.last { $0.actualWeight != nil && $0.predictedWeight != nil }
 
+        // 【修正1】グラフの右端を「明日の0時」に設定し、今日のデータポイントが右に突き抜けるのを防ぐ
+        let chartEndDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? now
+
         VStack(alignment: .leading, spacing: 16) {
             // 凡例の多言語化
             HStack(spacing: 16) {
@@ -28,13 +31,17 @@ struct WeightTrendChart: View {
             }
 
             if trendData.isEmpty {
-                Text(String(localized: "この期間のデータがありません")).foregroundColor(.secondary).frame(height: 250)
+                Text(String(localized: "この期間のデータがありません"))
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .center) // 中央揃えを追加
+                    .frame(height: 250)
             } else {
                 Chart {
                     ForEach(trendData) { item in
                         if let predicted = item.predictedWeight {
                             LineMark(x: .value("日付", item.date, unit: .day), y: .value("予測", predicted), series: .value("系列", "予測"))
-                                .foregroundStyle(.orange).lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
+                                .foregroundStyle(.orange)
+                                .lineStyle(StrokeStyle(lineWidth: 2, dash: [5, 5]))
                         }
                         if let actual = item.actualWeight {
                             LineMark(x: .value("日付", item.date, unit: .day), y: .value("実測", actual), series: .value("系列", "実測"))
@@ -51,7 +58,8 @@ struct WeightTrendChart: View {
                 }
                 .chartXSelection(value: $selectedDate)
                 .chartYScale(domain: .automatic(includesZero: false))
-                .chartXScale(domain: safeStartDate...now)
+                // 【修正1適用】右端を chartEndDate にする
+                .chartXScale(domain: safeStartDate...chartEndDate)
                 .chartXAxis {
                     AxisMarks(values: axisValues) { value in
                         if let date = value.as(Date.self) {
@@ -117,6 +125,8 @@ struct WeightTrendChart: View {
                         .foregroundColor(.secondary)
                 }
                 .padding()
+                // 【修正2】カードを画面幅いっぱいまで広げる
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .background(Color.secondary.opacity(0.1))
                 .cornerRadius(12)
             }
@@ -188,14 +198,13 @@ struct WeightTrendChart: View {
         return dates
     }
 }
+
 #Preview {
-    // プレビュー用に一時的な状態を保持する場所がないため、
-    // シンプルに表示を確認するだけなら .constant を使います。
     WeightTrendChart(
         viewModel: CalorieBalanceViewModel(previewData: DailyMetrics.mockData),
         graphStartDate: Calendar.current.date(byAdding: .day, value: -30, to: Date())!,
-        selectedDate: .constant(nil) // Bindingへの暫定対応
+        selectedDate: .constant(nil)
     )
     .padding()
-    .background(Color.black.opacity(0.1)) // グラフを見やすくするための背景
+    .background(Color.black.opacity(0.1))
 }
