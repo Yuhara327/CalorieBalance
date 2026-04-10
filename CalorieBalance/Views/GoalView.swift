@@ -148,7 +148,12 @@ struct GoalView: View {
                     Circle()
                         .stroke(Color.white.opacity(0.1), lineWidth: 15)
                     
+                    // MARK: - デバッグ時はスクショ映えする固定の進捗率を注入
+                    #if DEBUG
+                    let progress = 0.72 // 72%（お好みの数字に変更してください）
+                    #else
                     let progress = (viewModel.goalMode == .maintain) ? viewModel.maintenanceProgress : viewModel.achievementRate
+                    #endif
                     
                     Circle()
                         .trim(from: 0, to: progress)
@@ -168,8 +173,14 @@ struct GoalView: View {
                         }
                     } else {
                         VStack {
+                            #if DEBUG
+                            Text(progress, format: .percent.precision(.fractionLength(0)))
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                            #else
                             Text(viewModel.achievementRate, format: .percent.precision(.fractionLength(0)))
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
+                            #endif
+                            
                             Text(String(localized: "達成状況")).font(.caption).foregroundColor(.secondary)
                         }
                     }

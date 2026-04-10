@@ -13,15 +13,14 @@ struct DailyView: View {
     var body: some View {
         NavigationStack {
             ZStack {
+                // 背景
                 AdvancedBackgroundView()
                 
                 if viewModel.isLoading {
-                    // 修正：多言語化対応
                     ProgressView(String(localized: "データを取得中"))
                 } else if let errorMessage = viewModel.errorMessage {
                     VStack {
                         Text(errorMessage).foregroundColor(.red)
-                        // 修正：多環境対応
                         Button(String(localized: "再試行")) {
                             viewModel.requestAccessAndFetchData()
                         }
@@ -35,7 +34,6 @@ struct DailyView: View {
                         
                         List {
                             if viewModel.filteredData.isEmpty {
-                                // 修正：ContentUnavailableView 内のテキストを多言語化
                                 ContentUnavailableView(
                                     String(localized: "データがありません"),
                                     systemImage: "calendar.badge.exclamationmark",
@@ -68,6 +66,27 @@ struct DailyView: View {
                         .scrollContentBackground(.hidden)
                     }
                 }
+                
+                // MARK: - デバッグ用の透明ボタン（最前面レイヤー）
+                #if DEBUG
+                VStack {
+                    HStack {
+                        Spacer()
+                        Button(action: {
+                            UIImpactFeedbackGenerator(style: .heavy).impactOccurred()
+                            viewModel.injectDemoDataForScreenshots()
+                        }) {
+                            // 完全に透明だが、タップ判定は残る（幅80x高さ44の標準的なボタンサイズ）
+                            Color.black.opacity(0.001)
+                                .frame(width: 80, height: 44)
+                        }
+                    }
+                    Spacer()
+                }
+                // ナビゲーションバーの下に被らないように調整
+                .padding(.top, 10)
+                .padding(.trailing, 10)
+                #endif
             }
             .navigationDestination(for: DailyMetrics.self) { data in
                 DayDetailView(viewModel: viewModel, metrics: data)
