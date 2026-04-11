@@ -75,6 +75,16 @@
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
+		A6234A052F8AABFD007D6011 /* assets */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = assets;
+			sourceTree = "<group>";
+		};
+		A6234A072F8AABFD007D6011 /* docs */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = docs;
+			sourceTree = "<group>";
+		};
 		A69295722F61B6CF00B99F08 /* CalorieBalance */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			exceptions = (
@@ -117,6 +127,8 @@
 		A69295672F61B6CF00B99F08 = {
 			isa = PBXGroup;
 			children = (
+				A6234A052F8AABFD007D6011 /* assets */,
+				A6234A072F8AABFD007D6011 /* docs */,
 				A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */,
 				A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */,
 				A6D0865D2F7EB6A400A325C6 /* CalorieBalanceWidgetExtension.entitlements */,
@@ -163,6 +175,8 @@
 				A6D086562F7EB65000A325C6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
+				A6234A052F8AABFD007D6011 /* assets */,
+				A6234A072F8AABFD007D6011 /* docs */,
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
 			);
 			name = CalorieBalance;
@@ -185,6 +199,8 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
+				A6234A052F8AABFD007D6011 /* assets */,
+				A6234A072F8AABFD007D6011 /* docs */,
 				A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */,
 			);
 			name = CalorieBalanceWidgetExtension;
