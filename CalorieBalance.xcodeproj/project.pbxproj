@@ -11,8 +11,6 @@
 		A6B52E8E2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */ = {isa = PBXBuildFile; fileRef = A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */; };
 		A6C1D8792F8B735D00B0909F /* CalorieBalance.icon in Resources */ = {isa = PBXBuildFile; fileRef = A6C1D8782F8B735D00B0909F /* CalorieBalance.icon */; };
 		A6C1D87A2F8B735D00B0909F /* CalorieBalance.icon in Resources */ = {isa = PBXBuildFile; fileRef = A6C1D8782F8B735D00B0909F /* CalorieBalance.icon */; };
-		A6C1D87C2F8B749900B0909F /* CalorieBalancewhite.icon in Resources */ = {isa = PBXBuildFile; fileRef = A6C1D87B2F8B749900B0909F /* CalorieBalancewhite.icon */; };
-		A6C1D87D2F8B749900B0909F /* CalorieBalancewhite.icon in Resources */ = {isa = PBXBuildFile; fileRef = A6C1D87B2F8B749900B0909F /* CalorieBalancewhite.icon */; };
 		A6D086462F7EB64F00A325C6 /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086452F7EB64F00A325C6 /* WidgetKit.framework */; };
 		A6D086482F7EB64F00A325C6 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = A6D086472F7EB64F00A325C6 /* SwiftUI.framework */; };
 		A6D086582F7EB65000A325C6 /* CalorieBalanceWidgetExtension.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
@@ -48,7 +46,6 @@
 		A69295702F61B6CF00B99F08 /* CalorieBalance.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CalorieBalance.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */ = {isa = PBXFileReference; lastKnownFileType = text; path = Subscriptions.storekit; sourceTree = "<group>"; };
 		A6C1D8782F8B735D00B0909F /* CalorieBalance.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = CalorieBalance.icon; sourceTree = "<group>"; };
-		A6C1D87B2F8B749900B0909F /* CalorieBalancewhite.icon */ = {isa = PBXFileReference; lastKnownFileType = folder.iconcomposer.icon; path = CalorieBalancewhite.icon; sourceTree = "<group>"; };
 		A6D086432F7EB64F00A325C6 /* CalorieBalanceWidgetExtension.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = CalorieBalanceWidgetExtension.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		A6D086452F7EB64F00A325C6 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		A6D086472F7EB64F00A325C6 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
@@ -60,6 +57,7 @@
 		A6AFC3582F71233700DA8539 /* Exceptions for "CalorieBalance" folder in "CalorieBalance" target */ = {
 			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
 			membershipExceptions = (
+				Assets.xcassets,
 				Info.plist,
 			);
 			target = A692956F2F61B6CF00B99F08 /* CalorieBalance */;
@@ -78,16 +76,21 @@
 			);
 			target = A6D086422F7EB64F00A325C6 /* CalorieBalanceWidgetExtension */;
 		};
+		A6E5B9A12F8B79E40093B969 /* Exceptions for "docs" folder in "CalorieBalance" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				index.md,
+			);
+			target = A692956F2F61B6CF00B99F08 /* CalorieBalance */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		A6234A052F8AABFD007D6011 /* assets */ = {
-			isa = PBXFileSystemSynchronizedRootGroup;
-			path = assets;
-			sourceTree = "<group>";
-		};
 		A6234A072F8AABFD007D6011 /* docs */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				A6E5B9A12F8B79E40093B969 /* Exceptions for "docs" folder in "CalorieBalance" target */,
+			);
 			path = docs;
 			sourceTree = "<group>";
 		};
@@ -133,7 +136,6 @@
 		A69295672F61B6CF00B99F08 = {
 			isa = PBXGroup;
 			children = (
-				A6234A052F8AABFD007D6011 /* assets */,
 				A6234A072F8AABFD007D6011 /* docs */,
 				A6B52E8C2F87E23B00CEB4F8 /* Subscriptions.storekit */,
 				A6ED5EDB2F84E8B900308C19 /* Localizable.xcstrings */,
@@ -143,7 +145,6 @@
 				A6D086442F7EB64F00A325C6 /* Frameworks */,
 				A69295712F61B6CF00B99F08 /* Products */,
 				A6C1D8782F8B735D00B0909F /* CalorieBalance.icon */,
-				A6C1D87B2F8B749900B0909F /* CalorieBalancewhite.icon */,
 			);
 			sourceTree = "<group>";
 		};
@@ -183,7 +184,6 @@
 				A6D086562F7EB65000A325C6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
-				A6234A052F8AABFD007D6011 /* assets */,
 				A6234A072F8AABFD007D6011 /* docs */,
 				A69295722F61B6CF00B99F08 /* CalorieBalance */,
 			);
@@ -207,7 +207,6 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				A6234A052F8AABFD007D6011 /* assets */,
 				A6234A072F8AABFD007D6011 /* docs */,
 				A6D086492F7EB64F00A325C6 /* CalorieBalanceWidget */,
 			);
@@ -269,7 +268,6 @@
 			buildActionMask = 2147483647;
 			files = (
 				A6ED5EDC2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
-				A6C1D87C2F8B749900B0909F /* CalorieBalancewhite.icon in Resources */,
 				A6C1D8792F8B735D00B0909F /* CalorieBalance.icon in Resources */,
 				A6B52E8E2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */,
 			);
@@ -279,7 +277,6 @@
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				A6C1D87D2F8B749900B0909F /* CalorieBalancewhite.icon in Resources */,
 				A6C1D87A2F8B735D00B0909F /* CalorieBalance.icon in Resources */,
 				A6ED5EDD2F84E8B900308C19 /* Localizable.xcstrings in Resources */,
 				A6B52E8D2F87E23B00CEB4F8 /* Subscriptions.storekit in Resources */,
@@ -445,7 +442,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = CalorieBalance;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = CalorieBalance/CalorieBalance.entitlements;
 				CODE_SIGN_STYLE = Automatic;
@@ -481,7 +477,6 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = CalorieBalance;
-				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
 				ASSETCATALOG_COMPILER_INCLUDE_ALL_APPICON_ASSETS = NO;
 				CODE_SIGN_ENTITLEMENTS = CalorieBalance/CalorieBalance.entitlements;
 				CODE_SIGN_STYLE = Automatic;
