@@ -74,7 +74,18 @@ struct DailyView: View {
             }
             .navigationTitle("Daily")
             .toolbarTitleDisplayMode(.inlineLarge)
+            .toolbar {
+                ToolbarItem(placement: .topBarTrailing) {
+                    Link(destination: URL(string: "https://yuhara327.github.io/CalorieBalance/")!) {
+                        Image(systemName: "info.circle") // アイコンはお好みで（shield 等も可）
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
             .refreshable {
+                await viewModel.refreshData()
+            }
+            .task {
                 await viewModel.refreshData()
             }
         }

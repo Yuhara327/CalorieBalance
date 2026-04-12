@@ -108,6 +108,9 @@ struct GraphView: View {
                 .refreshable {
                     await viewModel.refreshData()
                 }
+                .task {
+                    await viewModel.refreshData()
+                }
             }
         }
     }

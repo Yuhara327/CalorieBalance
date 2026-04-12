@@ -34,6 +34,7 @@ enum DietGoalMode: String, CaseIterable, Identifiable {
         }
     }
 }
+
 @MainActor
 class CalorieBalanceViewModel: ObservableObject {
     @Published var allData: [DailyMetrics] = []
@@ -63,17 +64,13 @@ class CalorieBalanceViewModel: ObservableObject {
         
         switch goalMode {
         case .maintain:
-            // 維持モードの場合
             if isPastDeadline {
-                // 期限が来た時に、目標との差が1kg以内なら「達成」、そうでなければ「失敗（期限切れ）」
                 return abs(current - target) <= 1.0 ? .achieved : .expired
             } else {
-                // 期限内であれば、今の体重に関わらず常に「進行中」
                 return .inProgress
             }
             
         case .lose, .gain:
-            // 減量・増量モードの場合（従来通り、目標値に達した時点で達成）
             let isWeightAchieved = (goalMode == .lose) ? (current <= target) : (current >= target)
             
             if isWeightAchieved {
@@ -88,53 +85,46 @@ class CalorieBalanceViewModel: ObservableObject {
     
     var remainingDays: Int {
         let calendar = Calendar.current
-        // 今日の開始時点から期限日までの日数を計算
         let startOfToday = calendar.startOfDay(for: Date())
         let startOfTarget = calendar.startOfDay(for: targetDate)
         let components = calendar.dateComponents([.day], from: startOfToday, to: startOfTarget)
         return max(0, components.day ?? 0)
     }
     
-    // 維持モード用の経過日数割合（0.0 〜 1.0）
     var maintenanceProgress: Double {
         let calendar = Calendar.current
         let startOfDay = calendar.startOfDay(for: dietStartDate)
         let endOfDay = calendar.startOfDay(for: targetDate)
         let todayOfDay = calendar.startOfDay(for: Date())
         
-        // 全体の期間（日数）
         let totalDaysComponents = calendar.dateComponents([.day], from: startOfDay, to: endOfDay)
-        let totalDays = Double(totalDaysComponents.day ?? 1) // 最低1日とする
+        let totalDays = Double(totalDaysComponents.day ?? 1)
         
-        // 開始日から今日までの日数
         let elapsedDaysComponents = calendar.dateComponents([.day], from: startOfDay, to: todayOfDay)
         let elapsedDays = Double(elapsedDaysComponents.day ?? 0)
         
-        // 進捗率を計算（0.0 〜 1.0 にクランプ）
         return max(0.0, min(1.0, elapsedDays / totalDays))
     }
     
     var goalStatusMessage: String {
-            switch currentGoalStatus {
-            case .achieved:
-                return goalMode == .maintain ? String(localized: "目標体重を維持しています！") : String(localized: "目標達成！おめでとうございます！")
-            case .expired:
-                return String(localized: "期限が過ぎました。目標を再設定しましょう！")
-            case .inProgress:
-                // ここで "kg" を含めない。数値のフォーマットはView側か、このメソッド内でLocalizedStringKeyを生成して行う
-                let diff = abs(targetWeight - effectiveCurrentWeight)
-                let measurement = Measurement(value: diff, unit: UnitMass.kilograms)
-                // 単位付きの文字列を生成（OS設定に依存）
-                let formattedDiff = measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
-                return String(localized: "目標まであと \(formattedDiff)")
-            }
+        switch currentGoalStatus {
+        case .achieved:
+            return goalMode == .maintain ? String(localized: "目標体重を維持しています！") : String(localized: "目標達成！おめでとうございます！")
+        case .expired:
+            return String(localized: "期限が過ぎました。目標を再設定しましょう！")
+        case .inProgress:
+            let diff = abs(targetWeight - effectiveCurrentWeight)
+            let measurement = Measurement(value: diff, unit: UnitMass.kilograms)
+            let formattedDiff = measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
+            return String(localized: "目標まであと \(formattedDiff)")
         }
+    }
+    
     var targetDate: Date {
         get { Date(timeIntervalSince1970: targetDateInterval) }
         set { targetDateInterval = newValue.timeIntervalSince1970 }
     }
     
-    // 30日以内の最新の体重データを探す
     var effectiveCurrentWeight: Double {
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -30, to: Date()) ?? Date()
         let recentWeight = allData
@@ -143,14 +133,14 @@ class CalorieBalanceViewModel: ObservableObject {
         
         return recentWeight ?? (startingWeight > 0 ? startingWeight : targetWeight)
     }
-    // 日次目標収支の計算
+    
     var dailyTargetCalories: Double {
         let diff = targetWeight - effectiveCurrentWeight
         let totalNeededKcal = diff * 7200.0
         let days = Calendar.current.dateComponents([.day], from: Date(), to: targetDate).day ?? 1
         return totalNeededKcal/Double(max(days, 1))
     }
-    // 今日の目標を達成しているかの判定
+    
     var isDailyGoalAcheived: Bool {
         guard let todayData = allData.last(where: { Calendar.current.isDateInToday($0.date) } ),
               let net = todayData.netCalories else { return false }
@@ -162,11 +152,9 @@ class CalorieBalanceViewModel: ObservableObject {
         }
     }
     
-    // トータルの達成率
     var achievementRate: Double {
         guard isGoalSet, startingWeight > 0 else { return 0 }
         
-        // start を「あの日決めた体重」に固定
         let start = startingWeight
         let current = effectiveCurrentWeight
         let target = targetWeight
@@ -183,28 +171,21 @@ class CalorieBalanceViewModel: ObservableObject {
             return min(max((current - start) / total, 0), 1)
             
         case .maintain:
-            // 維持モードは±1.0kg以内なら達成とみなす論理
             return abs(current - target) <= 1.0 ? 1.0 : 0.0
         }
     }
     
-    // CalorieBalanceViewModel 内に追加
     func prepareForReselectingGoal() {
-        // 1. 現在の(直近の)体重を開始体重として再設定
         self.startingWeight = self.effectiveCurrentWeight
-        
-        // 2. 期限を現在から90日後に更新（デフォルト値の再適用）
         let defaultDuration: TimeInterval = 86400 * 90
         self.targetDate = Date().addingTimeInterval(defaultDuration)
-        
-        // 3. (任意) 目標体重も現在の体重に近い値にリセットしたければここで調整
     }
-    //開始日の「数字」は端末に保存する
+    
     @AppStorage("dietStartDate", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var dietStartDateInterval : TimeInterval =
     Calendar.current.date(byAdding: .day, value: -29, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
-    //取得期間用の変数
+    
     private var initialFetchDate: Date?
-    //開始日の数字を時間型にしたり、時間型でユーザが変えたやつを数字にしたりする。つまりこいつがユーザーの設定した、ダイエットの開始日である。
+    
     var dietStartDate: Date {
         get { Date(timeIntervalSince1970: dietStartDateInterval)}
         set { dietStartDateInterval = newValue.timeIntervalSince1970}
@@ -212,15 +193,15 @@ class CalorieBalanceViewModel: ObservableObject {
     
     private let healthKitManager = HealthKitManager()
     
-    //開始日から今日までの通算収支
     var totalNetCalories: Double {
-        let starOfDay = Calendar.current.startOfDay(for: dietStartDate)
+        // 合計収支は常にダイエット開始日を基準とする（グラフの表示期間には影響されない）
+        let startOfDay = Calendar.current.startOfDay(for: dietStartDate)
         return allData
-            .filter { $0.date >= starOfDay } // ダイエット開始日以降に絞る
-            .compactMap { $0.netCalories }       // netCalories が nil の要素を除外（Double? -> Double）
+            .filter { $0.date >= startOfDay }
+            .compactMap { $0.netCalories }
             .reduce(0, +)
     }
-    //selectedMonthに該当するデータを抽出
+    
     var filteredData: [DailyMetrics] {
         let calendar = Calendar.current
         return allData.filter { data in
@@ -228,115 +209,127 @@ class CalorieBalanceViewModel: ObservableObject {
         }.sorted(by: {$0.date > $1.date})
     }
     
-    // MARK: - グラフデータ計算ロジック（連続日付パディング対応版）
+    // MARK: - グラフデータ計算ロジック
 
-        func calculateWeightTrend(from startDate: Date) -> [WeightChartData] {
-            let calendar = Calendar.current
-            let startOfDay = calendar.startOfDay(for: startDate)
-            let endOfToday = calendar.startOfDay(for: Date())
+    func calculateWeightTrend(from startDate: Date) -> [WeightChartData] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        let endOfToday = calendar.startOfDay(for: Date())
+        
+        var chartData: [WeightChartData] = []
+        var cumulativeNet = 0.0
+        
+        let baseWeight = self.startingWeight > 0 ? self.startingWeight : (allData.first(where: { $0.weight != nil })?.weight ?? targetWeight)
+        
+        var currentDate = startOfDay
+        while currentDate <= endOfToday {
+            let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
             
-            var chartData: [WeightChartData] = []
-            var cumulativeNet = 0.0
+            let net = dailyData?.netCalories ?? 0.0
+            cumulativeNet += net
             
-            // 基準となる体重（開始体重が設定されていればそれを使用し、なければ最初の有効データか目標体重をフォールバックとする）
-            let baseWeight = self.startingWeight > 0 ? self.startingWeight : (allData.first(where: { $0.weight != nil })?.weight ?? targetWeight)
+            let predictedWeight = baseWeight + (cumulativeNet / 7200.0)
             
-            var currentDate = startOfDay
-            while currentDate <= endOfToday {
-                // その日（currentDate）に該当するHealthKitのデータを探す
-                let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
-                
-                // カロリー収支の累積（記録がない日は 0 として加算）
-                let net = dailyData?.netCalories ?? 0.0
-                cumulativeNet += net
-                
-                // 予測体重の計算（7200kcal = 1kg）
-                let predictedWeight = baseWeight + (cumulativeNet / 7200.0)
-                
-                chartData.append(WeightChartData(
-                    date: currentDate,
-                    actualWeight: dailyData?.weight, // 記録がない日はnil（グラフ上で点がスキップされる）
-                    predictedWeight: predictedWeight
-                ))
-                
-                // 1日進める
-                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
-            }
+            chartData.append(WeightChartData(
+                date: currentDate,
+                actualWeight: dailyData?.weight,
+                predictedWeight: predictedWeight
+            ))
             
-            return chartData
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
         }
         
-        func calculateCalorieTrend(from startDate: Date) -> [CalorieChartData] {
-            let calendar = Calendar.current
-            let startOfDay = calendar.startOfDay(for: startDate)
-            let endOfToday = calendar.startOfDay(for: Date())
+        return chartData
+    }
+    
+    func calculateCalorieTrend(from startDate: Date) -> [CalorieChartData] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        let endOfToday = calendar.startOfDay(for: Date())
+        
+        var chartData: [CalorieChartData] = []
+        var runningSum = 0.0
+        
+        var currentDate = startOfDay
+        while currentDate <= endOfToday {
+            let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
             
-            var chartData: [CalorieChartData] = []
-            var runningSum = 0.0
+            let net = dailyData?.netCalories ?? 0.0
+            runningSum += net
             
-            var currentDate = startOfDay
-            while currentDate <= endOfToday {
-                let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
-                
-                let net = dailyData?.netCalories ?? 0.0
-                runningSum += net
-                
-                chartData.append(CalorieChartData(
-                    date: currentDate,
-                    dailyNet: net,
-                    cumulativeNet: runningSum
-                ))
-                
-                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
-            }
+            chartData.append(CalorieChartData(
+                date: currentDate,
+                dailyNet: net,
+                cumulativeNet: runningSum
+            ))
             
-            return chartData
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
         }
         
-        func calculateSleepData(from startDate: Date) -> [SleepChartData] {
-            let calendar = Calendar.current
-            let startOfDay = calendar.startOfDay(for: startDate)
-            let endOfToday = calendar.startOfDay(for: Date())
+        return chartData
+    }
+    
+    func calculateSleepData(from startDate: Date) -> [SleepChartData] {
+        let calendar = Calendar.current
+        let startOfDay = calendar.startOfDay(for: startDate)
+        let endOfToday = calendar.startOfDay(for: Date())
+        
+        var chartData: [SleepChartData] = []
+        
+        var currentDate = startOfDay
+        while currentDate <= endOfToday {
+            let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
             
-            var chartData: [SleepChartData] = []
+            let net = dailyData?.netCalories ?? 0.0
+            let sleepHours = (dailyData?.sleepSeconds ?? 0.0) / 3600.0
             
-            var currentDate = startOfDay
-            while currentDate <= endOfToday {
-                let dailyData = allData.first(where: { calendar.isDate($0.date, inSameDayAs: currentDate) })
-                
-                let net = dailyData?.netCalories ?? 0.0
-                let sleepHours = (dailyData?.sleepSeconds ?? 0.0) / 3600.0
-                
-                chartData.append(SleepChartData(
-                    date: currentDate,
-                    sleep: sleepHours, // 記録がない日は 0.0時間 となる
-                    dailyNet: net
-                ))
-                
-                currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
-            }
+            chartData.append(SleepChartData(
+                date: currentDate,
+                sleep: sleepHours,
+                dailyNet: net
+            ))
             
-            return chartData
+            currentDate = calendar.date(byAdding: .day, value: 1, to: currentDate)!
         }
-    // ① 昔の形を復活（他のViewのエラーを全て消すためのダミー・ラッパー）
+        
+        return chartData
+    }
+
     func requestAccessAndFetchData(customStartDate: Date? = nil) {
         Task {
-            // 中身は②を呼ぶだけ
             await reloadDataAsync(customStartDate: customStartDate)
         }
     }
     
-    // ② 手入力した時などに「終わるまで待つ」ための本当の取得メソッド
     private func reloadDataAsync(customStartDate: Date? = nil) async {
+        let dStart = self.dietStartDate
+        let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
         
-        let fetchStart = customStartDate ?? initialFetchDate ?? dietStartDate
+        // グラフや月移動で指定された日付、もしくは前回の取得日付（異常値は除外）
+        let explicitStart: Date? = {
+            if let custom = customStartDate { return custom }
+            if let initial = initialFetchDate, initial > Date(timeIntervalSince1970: 100000000) { return initial }
+            return nil
+        }()
+        
+        var fetchStart = thirtyDaysAgo
+        if let eStart = explicitStart {
+            // 指定日付、ダイエット開始日、30日前のうち、最も古い日付を採用してデータ欠損を防ぐ
+            fetchStart = min(dStart, eStart, thirtyDaysAgo)
+        } else {
+            fetchStart = min(dStart, thirtyDaysAgo)
+        }
+        
+        // 未来日付のガード
+        if fetchStart > Date() {
+            fetchStart = thirtyDaysAgo
+        }
         
         await MainActor.run { self.isLoading = true }
         
         do {
             try await healthKitManager.requestAuthorization()
             
-            // 取得の「終了地点」を「今日の23時59分59秒」にする
             let calendar = Calendar.current
             let endOfToday = calendar.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
             
@@ -349,28 +342,30 @@ class CalorieBalanceViewModel: ObservableObject {
                 self.allData = fetched
                 self.initialFetchDate = fetchStart
                 self.isLoading = false
-                self.exportSnapshotForWidget() // ← ★成功時の最後にのみ記述する
+                self.exportSnapshotForWidget()
             }
         } catch {
             await MainActor.run {
                 self.errorMessage = "データの取得に失敗しました: \(error.localizedDescription)"
                 self.isLoading = false
-                // ★ここにあった余分なコードは削除しました
             }
         }
     }
+    
     func refreshData() async {
-            await reloadDataAsync()
+        // リフレッシュ時は設定状況を再評価するため引数なしで呼ぶ
+        await reloadDataAsync(customStartDate: nil)
     }
+    
     func changeMonth(by value: Int) {
         if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
             selectedMonth = newMonth
+            
             let currentOldest = initialFetchDate ?? dietStartDate
             
             if selectedMonth < currentOldest {
                 let calendar = Calendar.current
                 if let startOfNewMonth = calendar.date(from: calendar.dateComponents([.year, .month], from: selectedMonth)) {
-                    // Task は不要になりました。直接呼びます。
                     requestAccessAndFetchData(customStartDate: startOfNewMonth)
                 }
             }
@@ -382,14 +377,9 @@ class CalorieBalanceViewModel: ObservableObject {
     func addDietaryCalories(_ calories: Double, for date: Date) {
         Task {
             do {
-                // 1. 保存時間をその日の「お昼の12時（正午）」にずらして確実にその日のデータにする
                 let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
                 try await healthKitManager.saveDietaryEnergy(calories: calories, date: saveDate)
-                
-                // 2. HealthKitのデータベースが更新されるのを0.5秒待つ
                 try await Task.sleep(nanoseconds: 500_000_000)
-                
-                // 3. 最新データを取得して画面を更新
                 await reloadDataAsync(customStartDate: initialFetchDate)
             } catch {
                 await MainActor.run { self.errorMessage = "カロリーの保存に失敗: \(error.localizedDescription)" }
@@ -400,10 +390,8 @@ class CalorieBalanceViewModel: ObservableObject {
     func addWeight(_ weight: Double, for date: Date) {
         Task {
             do {
-                // 体重も同様にお昼の12時で保存
                 let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
                 try await healthKitManager.saveWeight(weight: weight, date: saveDate)
-                
                 try await Task.sleep(nanoseconds: 500_000_000)
                 await reloadDataAsync(customStartDate: initialFetchDate)
             } catch {
@@ -415,9 +403,7 @@ class CalorieBalanceViewModel: ObservableObject {
     func addSleep(start: Date, end: Date) {
         Task {
             do {
-                // 睡眠はユーザーが選んだ時間をそのまま使う
                 try await healthKitManager.saveSleep(start: start, end: end)
-                
                 try await Task.sleep(nanoseconds: 500_000_000)
                 await reloadDataAsync(customStartDate: initialFetchDate)
             } catch {
@@ -463,20 +449,16 @@ class CalorieBalanceViewModel: ObservableObject {
             }
         }
     }
-    //プレビューよう
+    
     private let isPreview: Bool
     
-    // 修正: イニシャライザを追加し、プレビューデータを注入できるようにする
     init(previewData: [DailyMetrics]? = nil) {
         if let data = previewData {
-            // プレビューデータが渡された場合
             self.allData = data
             self.isPreview = true
             self.isLoading = false
-            // プレビュー時は30日前を開始日にセットしておく
             self.dietStartDateInterval = Calendar.current.date(byAdding: .day, value: -30, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
         } else {
-            // 通常のアプリ起動時
             self.isPreview = false
         }
     }
@@ -487,7 +469,6 @@ class CalorieBalanceViewModel: ObservableObject {
         
         let todayData = allData.first(where: { Calendar.current.isDateInToday($0.date) })
         
-        // 進捗率の決定ロジックをメインアプリから移植
         let progress = (goalMode == .maintain) ? maintenanceProgress : achievementRate
         sharedDefaults.set(progress, forKey: "widget_progressRate")
         
@@ -506,16 +487,13 @@ class CalorieBalanceViewModel: ObservableObject {
         sharedDefaults.set(isDailyGoalAcheived, forKey: "widget_isDailyGoalAchieved")
         sharedDefaults.set(goalMode.rawValue, forKey: "widget_goalMode")
         let diff = abs(targetWeight - effectiveCurrentWeight)
-                sharedDefaults.set(diff, forKey: "widget_targetDiff")
+        sharedDefaults.set(diff, forKey: "widget_targetDiff")
         
         WidgetCenter.shared.reloadAllTimelines()
     }
-    
-    
 }
 
 extension CalorieBalanceViewModel {
-    // 1. 現在の地域の標準単位を返すプロパティ
     var userWeightUnit: UnitMass {
         let system = Locale.current.measurementSystem
         if system == .us { return .pounds }
@@ -523,14 +501,12 @@ extension CalorieBalanceViewModel {
         return .kilograms
     }
 
-    // 2. 保存時に「ユーザーの単位」を「内部のkg」に変換して保存する
     func saveWeightFromUserUnit(_ value: Double, for date: Date) {
         let measurement = Measurement(value: value, unit: userWeightUnit)
         let kgValue = measurement.converted(to: .kilograms).value
-        self.addWeight(kgValue, for: date) // 既存の保存メソッドを呼ぶ
+        self.addWeight(kgValue, for: date)
     }
     
-    // 3. 表示用に「内部のkg」を「ユーザーの単位」の数値に変換する
     func convertToUserUnitValue(_ kgValue: Double) -> Double {
         let measurement = Measurement(value: kgValue, unit: UnitMass.kilograms)
         return measurement.converted(to: userWeightUnit).value
