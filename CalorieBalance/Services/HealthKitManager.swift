@@ -38,7 +38,7 @@ class HealthKitManager {
         let calendar = Calendar.current
         let anchorDate = calendar.startOfDay(for: startDate)
         let interval = DateComponents(day: 1)
-        let predicate = HKQuery.predicateForSamples(withStart: anchorDate, end: endDate, options: .strictStartDate)
+        let predicate = HKQuery.predicateForSamples(withStart: anchorDate, end: endDate, options: [])
         
         async let activeDict = fetchStatisticsCollection(for: .activeEnergyBurned, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
         async let restingDict = fetchStatisticsCollection(for: .basalEnergyBurned, unit: .kilocalorie(), options: .cumulativeSum, predicate: predicate, anchor: anchorDate, interval: interval, startDate: anchorDate, endDate: endDate)
@@ -122,17 +122,20 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
-
+    
     private func fetchSleepDuration(start: Date, end: Date) async throws -> [Date: Double] {
         let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: .strictStartDate)
+        // 修正：開始時間だけでなく、期間内に終了するデータも取得対象に含める
+        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+        
         return try await withCheckedThrowingContinuation { con in
             let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, err in
                 if let err = err { con.resume(throwing: err); return }
                 var dict: [Date: Double] = [:]
                 (samples as? [HKCategorySample])?.forEach { s in
                     if s.value != HKCategoryValueSleepAnalysis.inBed.rawValue && s.value != HKCategoryValueSleepAnalysis.awake.rawValue {
-                        let day = Calendar.current.startOfDay(for: s.startDate)
+                        // 修正：起床日（endDate）を基準に「何日のデータか」を決定
+                        let day = Calendar.current.startOfDay(for: s.endDate)
                         dict[day, default: 0] += s.endDate.timeIntervalSince(s.startDate)
                     }
                 }
@@ -141,7 +144,6 @@ class HealthKitManager {
             healthStore.execute(query)
         }
     }
-    
     func saveWeight(weight: Double, date: Date) async throws {
         guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
         // 修正：.kilogram() ではなく HKUnit.gramUnit(with: .kilo) を明示的に使用
@@ -170,27 +172,29 @@ class HealthKitManager {
         try await healthStore.save(sample)
     }
     
-    func deleteQuantityData(for identifier: HKQuantityTypeIdentifier, on date: Date) async throws {
-        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return }
-        
-        let startOfDay = Calendar.current.startOfDay(for: date)
-        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
-        
-        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
-        let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
-        
-        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
-        
-        try await healthStore.deleteObjects(of: type, predicate: predicate)
-    }
-
     func deleteSleepData(on date: Date) async throws {
         guard let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis) else { return }
         
         let startOfDay = Calendar.current.startOfDay(for: date)
         guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
         
-        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: .strictStartDate)
+        // 修正：.strictStartDate を削除して [] にする
+        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: [])
+        let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
+        let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
+        
+        try await healthStore.deleteObjects(of: type, predicate: predicate)
+    }
+    
+    // 念のためこちらも同様に修正
+    func deleteQuantityData(for identifier: HKQuantityTypeIdentifier, on date: Date) async throws {
+        guard let type = HKObjectType.quantityType(forIdentifier: identifier) else { return }
+        
+        let startOfDay = Calendar.current.startOfDay(for: date)
+        guard let endOfDay = Calendar.current.date(byAdding: .day, value: 1, to: startOfDay) else { return }
+        
+        // 修正：.strictStartDate を削除して [] にする
+        let datePredicate = HKQuery.predicateForSamples(withStart: startOfDay, end: endOfDay, options: [])
         let sourcePredicate = HKQuery.predicateForObjects(from: HKSource.default())
         let predicate = NSCompoundPredicate(andPredicateWithSubpredicates: [datePredicate, sourcePredicate])
         

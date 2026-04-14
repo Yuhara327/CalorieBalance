@@ -400,18 +400,43 @@ class CalorieBalanceViewModel: ObservableObject {
         }
     }
     
-    func addSleep(start: Date, end: Date) {
-        Task {
-            do {
-                try await healthKitManager.saveSleep(start: start, end: end)
-                try await Task.sleep(nanoseconds: 500_000_000)
-                await reloadDataAsync(customStartDate: initialFetchDate)
-            } catch {
-                await MainActor.run { self.errorMessage = "睡眠の保存に失敗: \(error.localizedDescription)" }
+    func addSleep(start: Date, end: Date, targetDate: Date) {
+            let now = Date()
+            
+            // --- バリデーションセクション ---
+            // ここで errorMessage をセットすると親の DailyView がエラー画面に切り替わってしまうため、
+            // 条件に合致しない場合は単に return します。
+            // （View側の Alert がこれと同じ条件でユーザーに警告を表示します）
+            
+            // 1. 未来の保存禁止
+            guard end <= now else { return }
+
+            // 2. 対象日（詳細画面の日付）との整合性チェック
+            if !Calendar.current.isDate(end, inSameDayAs: targetDate) { return }
+
+            // 3. 時間の逆転チェック
+            guard start < end else { return }
+            
+            // 4. 24時間超過チェック
+            let duration = end.timeIntervalSince(start)
+            if duration > 86400 { return }
+            
+            // --- 保存処理セクション ---
+            Task {
+                do {
+                    try await healthKitManager.saveSleep(start: start, end: end)
+                    // HealthKitへの反映を待機
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    // データを再読み込み
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                } catch {
+                    // システム的な失敗（HealthKitの権限拒否など）の場合のみエラーを表示
+                    await MainActor.run {
+                        self.errorMessage = "睡眠の保存に失敗しました: \(error.localizedDescription)"
+                    }
+                }
             }
         }
-    }
-    
     // MARK: - 手入力データの削除
     
     func deleteDietaryCalories(for date: Date) {
