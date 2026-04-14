@@ -1,7 +1,7 @@
 # Terms of Service (EULA) - Calorie Balance
 
 Please select your language:
-[日本語](#japanese) | [English](#english) | [Français](#francais) | [Deutsch](#deutsch) | [Español](#espanol) | [한국어](#korean)
+[日本語](#japanese) | [English](#english) | [Français](#francais) | [Deutsch](#deutsch) | [Español](#espanol) | [한국어](#korean) | [简体中文](#simplified-chinese)
 
 ---
 
@@ -62,3 +62,13 @@ Please select your language:
 2. **구독 (자동 갱신)**: 결제는 Apple ID 계정으로 청구됩니다. 현재 구독 기간이 끝나기 최소 24시간 전에 자동 갱신을 해제하지 않으면 구독이 자동으로 갱신됩니다. 사용자는 iOS 계정 설정에서 구독을 관리하고 취소할 수 있습니다.
 3. **금지 사항**: 역설계, 무단 액세스, 지적 재산권 침해 및 유사 서비스의 생성은 엄격히 금지됩니다.
 4. **준거법 및 관할 법원**: 본 약관은 일본법의 규율을 받으며, 본 앱과 관련하여 발생하는 모든 분쟁은 도쿄지방재판소를 제1심의 전속적 합의 관할 법원으로 합니다.
+
+---
+
+<a name="simplified-chinese"></a>
+## [简体中文] 服务条款 (EULA)
+
+1. **免责声明**: 本应用程序的预测仅用于模拟，不构成医疗诊断。开发者对使用本应用程序所产生的任何结果不承担任何责任。
+2. **订阅（自动续期）**: 部分功能以自动续期订阅的形式提供。确认购买时，将向您的Apple ID帐户收取费用。除非在当前订阅期结束前至少24小时关闭自动续期，否则订阅将自动续订。用户必须在购买后前往iOS的“设置”应用程序（Apple ID设置）中管理和取消订阅。
+3. **禁止事项**: 严禁逆向工程、未经授权的访问、侵犯知识产权或创建类似服务。
+4. **适用法律与管辖法院**: 本条款受日本法律管辖。与本应用程序相关的任何争议应由东京地方裁判所作为一审专属管辖法院。

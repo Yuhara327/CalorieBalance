@@ -1,7 +1,7 @@
 # Privacy Policy - Calorie Balance
 
 Please select your language:
-[日本語](#japanese) | [English](#english) | [Français](#francais) | [Deutsch](#deutsch) | [Español](#espanol) | [한국어](#korean)
+[日本語](#japanese) | [English](#english) | [Français](#francais) | [Deutsch](#deutsch) | [Español](#espanol) | [한국어](#korean) | [简体中文](#simplified-chinese)
 
 ---
 
@@ -68,3 +68,14 @@ Please select your language:
 3. **로컬 저장**: 모든 데이터는 기기 내 또는 사용자의 개인 iCloud에 로컬로 저장됩니다. 개발자(Soichiro Yuhara)는 외부 서버에서 건강 데이터를 수집, 저장 또는 모니터링하지 않습니다.
 4. **제3자 제공 금지**: 본 앱은 HealthKit 데이터를 포함한 사용자의 어떠한 데이터도 광고주 또는 데이터 브로커 등 제3자에게 제공, 공유 또는 판매하지 않습니다.
 5. **문의**: so960397@gmail.com
+
+---
+
+<a name="simplified-chinese"></a>
+## [简体中文] 隐私政策
+
+1. **数据收集**: 本应用程序通过Apple的HealthKit API处理体重、卡路里摄入量、睡眠时间以及健康数据。
+2. **使用目的**: 数据仅用于提供未来的体重预测和目标管理功能。
+3. **本地存储**: 所有数据仅保存在您的设备本地或您的个人iCloud中。开发者（Soichiro Yuhara）不会在任何外部服务器上收集、存储或监控您的健康数据。
+4. **禁止第三方共享**: 本应用程序绝不会向第三方、广告商或数据经纪人提供、共享或出售您的任何数据（包括HealthKit数据）。
+5. **联系方式**: so960397@gmail.com

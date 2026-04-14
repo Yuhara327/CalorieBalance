@@ -159,8 +159,8 @@ struct PaywallView: View {
                                 }
                                 .disabled(isPurchasing)
                                 
-                                Link(String(localized: "利用規約"), destination: URL(string: "https://yuhara327.github.io/CalorieBalance/")!)
-                                Link(String(localized: "プライバシー"), destination: URL(string: "https://yuhara327.github.io/CalorieBalance/")!)
+                                Link(String(localized: "利用規約"), destination: URL(string: "https://yuhara327.github.io/CalorieBalance/README")!)
+                                Link(String(localized: "プライバシー"), destination: URL(string: "https://yuhara327.github.io/CalorieBalance/Privacy")!)
                             }
                             .font(.caption2)
                             .foregroundColor(.white.opacity(0.5))
