@@ -2,5 +2,5 @@
 
 Please select the document you wish to view:
 
-* [Privacy Policy / プライバシーポリシー](./Privacy)
-* [Terms of Service / 利用規約](./README)
+* [Privacy Policy / プライバシーポリシー](./privacy)
+* [Terms of Service / 利用規約](./terms)
