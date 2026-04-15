@@ -483,34 +483,49 @@ class CalorieBalanceViewModel: ObservableObject {
         let calendar = Calendar.current
         let today = Date()
         
-        // ベースとなる開始体重（ここから日々の収支によって変動させる）
+        // ベースとなる開始体重
         var currentWeight = 74.0
         
-        for i in (0..<30).reversed() {
+        // 追加: 数日間引きずる生体ノイズ（水分量、便秘などの状態を保持）
+        var biologicalNoise = 0.0
+        
+        for (index, i) in (0..<30).reversed().enumerated() {
             guard let date = calendar.date(byAdding: .day, value: -i, to: today) else { continue }
             
-            // 1. 基礎代謝と運動カロリー（日によって運動量を変える）
+            // 1. 基礎代謝と運動カロリー
             let resting = 1700.0 + Double.random(in: -20...20)
             let active = Double.random(in: 200...800)
             let totalBurned = resting + active
             
-            // 2. 摂取カロリーの算出（約20%の確率でカロリーオーバーの日を作る）
+            // 2. 摂取カロリーの算出
             let isCheatDay = Double.random(in: 0...1) < 0.2
             let dietary: Double
             if isCheatDay {
-                // 摂取超過（消費カロリー + 200〜800 kcal）
                 dietary = totalBurned + Double.random(in: 200...800)
             } else {
-                // 節制日（1400 〜 2100 kcal）
                 dietary = Double.random(in: 1400...2100)
             }
             
-            // 3. カロリー収支の計算と、それに基づく体重の変動（7200kcal = 1kg）
+            // 3. カロリー収支の計算と、それに基づく体重の変動
             let netCalories = dietary - totalBurned
             currentWeight += (netCalories / 7200.0)
             
-            // グラフ上の見栄えを考慮し、日々の水分量ブレ等のノイズを付与
-            let displayWeight = currentWeight + Double.random(in: -0.4...0.4)
+            // 4. 実際の体重（グラフ表示用）の算出
+            let displayWeight: Double
+            if index == 0 {
+                // 【重要】初日はノイズを乗せず、理論値と実測値の起点を完全に一致させる。
+                // これにより、アプリ側の計算ロジックによる「永遠の平行線」を防ぐ。
+                displayWeight = currentWeight
+                biologicalNoise = 0.0
+            } else {
+                // 前日のノイズを70%引き継ぎつつ、新たなノイズを足す（波を打つように上下する）
+                biologicalNoise = (biologicalNoise * 0.7) + Double.random(in: -0.3...0.3)
+                
+                // ノイズが大きくなりすぎないよう、±0.8kgでクリッピング
+                biologicalNoise = min(max(biologicalNoise, -0.8), 0.8)
+                
+                displayWeight = currentWeight + biologicalNoise
+            }
             
             // 歩数はアクティブカロリーにある程度比例させる
             let baseSteps = Int(active * 15.0)
