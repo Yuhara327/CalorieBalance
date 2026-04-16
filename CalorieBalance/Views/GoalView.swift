@@ -39,7 +39,7 @@ struct GoalView: View {
                 if !subManager.isPremium {
                     ProFeatureOverlay(
                         title: String(localized: "目標管理の解放"),
-                        message: String(localized: "あなた専用の目標を設定し、進捗リングで\n成果を可視化しましょう。\n目標を持つことがダイエット成功への最短ルートです。")
+                        message: String(localized: "あなた専用の目標を設定し、進捗リングで\n成果を可視化しましょう。\n目標を持つことがダイエット成功への最短ルートです。\n無料期間で機能を試せます。")
                     )
                 }
             }
