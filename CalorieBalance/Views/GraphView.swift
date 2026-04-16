@@ -74,7 +74,7 @@ struct GraphView: View {
                                 if !subManager.isPremium {
                                     ProFeatureOverlay(
                                         title: String(localized: "体重予測の解放"),
-                                        message: String(localized: "日々のカロリーから未来の体重を予測し、モチベーションを維持しましょう。")
+                                        message: String(localized: "日々のカロリーから未来の体重を予測し、モチベーションを維持しましょう。\n無料期間で機能を試せます。")
                                     )
                                 }
                             }
@@ -95,7 +95,7 @@ struct GraphView: View {
                                 if !subManager.isPremium {
                                     ProFeatureOverlay(
                                         title: String(localized: "睡眠相関の解放"),
-                                        message: String(localized: "睡眠不足がダイエットに与える影響を分析し、最適な生活リズムを見つけましょう。")
+                                        message: String(localized: "睡眠不足がダイエットに与える影響を分析し、最適な生活リズムを見つけましょう。\n無料期間で機能を試せます。")
                                     )
                                 }
                             }

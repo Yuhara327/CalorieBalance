@@ -9,7 +9,7 @@ import SwiftUI
 
 struct ProFeatureOverlay: View {
     var title: String = String(localized: "Pro機能")
-    var message: String = String(localized: "この機能を利用するにはProプランへの加入が必要です。高度な分析でダイエットを加速させましょう。")
+    var message: String = String(localized: "この機能を利用するにはProプランへの加入が必要です。高度な分析で自己実現を加速させましょう。\n無料期間で機能を試すことができます。")
     
     // 追加: Paywallを表示するための状態変数
     @State private var isShowingPaywall = false

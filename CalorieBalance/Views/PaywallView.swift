@@ -105,7 +105,16 @@ struct PaywallView: View {
                                 }
                             }
                         }
-                        
+                        if selectedProduct?.id.contains("yearly") == true {
+                            Text(String(localized: "年間プランでは、無料期間内にキャンセルすれば料金はかかりません。"))
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.5))
+                        } else {
+                            // 月間プラン用の厳密な表現
+                            Text(String(localized: "自動更新は設定アプリから停止できます。"))
+                                .font(.caption2)
+                                .foregroundColor(.white.opacity(0.5))
+                        }
                         // 課金ボタン
                         VStack(spacing: 12) {
                             Button {
@@ -129,11 +138,11 @@ struct PaywallView: View {
                                         .frame(maxWidth: .infinity)
                                         .padding(.vertical, 14)
                                 } else {
-                                    Text(String(localized: "続ける"))
-                                        .font(.headline).bold()
-                                        .foregroundColor(.black)
-                                        .frame(maxWidth: .infinity)
-                                        .padding(.vertical, 14)
+                                    Text(selectedProduct?.id.contains("yearly") == true ? String(localized: "7日間の無料体験を開始") : String(localized: "月間プランを開始"))
+                                            .font(.headline).bold()
+                                            .foregroundColor(.black)
+                                            .frame(maxWidth: .infinity)
+                                            .padding(.vertical, 14)
                                 }
                             }
                             .disabled(isPurchasing || selectedProduct == nil || subManager.products.isEmpty)
@@ -143,7 +152,6 @@ struct PaywallView: View {
                             .cornerRadius(14)
                             .shadow(color: .teal.opacity(0.3), radius: 8, y: 4)
                             .opacity((isPurchasing || selectedProduct == nil) ? 0.5 : 1.0)
-                            
                             // 復元処理とリンク
                             HStack(spacing: 16) {
                                 Button(String(localized: "以前の購入を復元")) {
@@ -242,8 +250,8 @@ struct PaywallView: View {
         let isYearly = product.id.contains("yearly")
         
         let planName = isYearly ? String(localized: "年間プラン") : String(localized: "月間プラン")
-        let subtitle = isYearly ? String(localized: "１年間継続") : String(localized: "いつでも解約可")
-        let badgeText = isYearly ? String(localized: "2ヶ月分 お得") : nil
+        let subtitle = isYearly ? String(localized: "7日間の無料体験！") : String(localized: "いつでも解約可！")
+        let badgeText = isYearly ? String(localized: "月額よりお得、無料期間あり！") : nil
         
         Button {
             withAnimation(.spring(response: 0.3, dampingFraction: 0.7)) {
