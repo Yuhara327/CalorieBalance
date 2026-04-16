@@ -102,6 +102,9 @@ struct DayDetailView: View {
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
                     }
+                    Text("*データは、Apple「ヘルスケア」アプリに準拠しています。\n*消費カロリーは、アクティブエネルギーと安静時消費エネルギーの合計です。")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 .padding()
             }
@@ -118,7 +121,7 @@ struct DayDetailView: View {
                     viewModel.addDietaryCalories(amount, for: currentData.date)
                     energyInput = ""
                 } else {
-                    inputErrorMessage = "有効な数値を入力してください。"
+                    inputErrorMessage = String(localized: "有効な数値を入力してください。")
                     showInputError = true
                 }
             }
@@ -137,7 +140,7 @@ struct DayDetailView: View {
                     viewModel.saveWeightFromUserUnit(val, for: currentData.date)
                     weightInput = ""
                 } else {
-                    inputErrorMessage = "有効な数値を入力してください。"
+                    inputErrorMessage = String(localized: "有効な数値を入力してください。")
                     showInputError = true
                 }
             }
