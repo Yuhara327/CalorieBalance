@@ -23,6 +23,7 @@ struct DayDetailView: View {
     @State private var sleepEnd = Date()
     @State private var inputErrorMessage: String? = nil
     @State private var showInputError: Bool = false
+    @State private var isCalorieExpanded: Bool = false
     
     private var sleepEndRange: ClosedRange<Date> {
         let start = Calendar.current.startOfDay(for: currentData.date)
@@ -49,19 +50,107 @@ struct DayDetailView: View {
                         sectionHeader(String(localized: "エネルギー"))
                         
                         VStack(spacing: 0) {
+                            // 1. 消費カロリー
                             energyRow(icon: "flame.fill", title: String(localized: "消費"), value: currentData.totalBurnedCalories.map { Text("\(Int($0)) kcal") } ?? Text("-- kcal"), color: .green)
                             
                             Divider().padding(.horizontal)
                             
-                            Button(action: {
-                                energyInput = currentData.dietaryCalories.map { String(Int($0)) } ?? ""
-                                showingEnergyInput = true
-                            }) {
-                                energyRow(icon: "fork.knife", title: String(localized: "摂取"), value: currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text(String(localized: "入力する")), color: .red)
+                            // 2. 摂取カロリー（ヘッダー行）
+                            HStack {
+                                Image(systemName: "fork.knife")
+                                    .font(.title)
+                                    .frame(width: 44, alignment: .center)
+                                
+                                HStack(spacing: 8) {
+                                    Text("摂取").font(.title3).bold()
+                                    Image(systemName: "chevron.right")
+                                        .font(.caption.bold())
+                                        .foregroundColor(.secondary)
+                                        .rotationEffect(.degrees(isCalorieExpanded ? 90 : 0))
+                                }
+                                
+                                Spacer()
+                                
+                                (currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text("0 kcal"))
+                                    .font(.title)
+                                    .bold()
+                            }
+                            .foregroundColor(.red)
+                            .padding(16)
+                            .contentShape(Rectangle())
+                            .onTapGesture {
+                                withAnimation(.spring()) {
+                                    isCalorieExpanded.toggle()
+                                }
+                            }
+                            
+                            // 3. 摂取カロリー（展開コンテンツ）
+                            if isCalorieExpanded {
+                                VStack(spacing: 16) {
+                                    // 新規追加ボタン（常に先頭）
+                                    Button(action: {
+                                        showingEnergyInput = true
+                                    }) {
+                                        HStack(spacing: 8) {
+                                            Image(systemName: "plus.circle.fill")
+                                            Text("データを入力")
+                                        }
+                                        .font(.subheadline.bold())
+                                        .foregroundColor(.white) // 文字色を白に
+                                        .padding(.vertical, 5)
+                                        .padding(.horizontal, 80)
+                                        .background(Color.red) // カロリーのテーマカラー
+                                        .clipShape(Capsule()) // 両端を丸く
+                                        .shadow(color: .red.opacity(0.3), radius: 4, x: 0, y: 2) // 軽く浮かせる
+                                    }
+                                    .buttonStyle(PlainButtonStyle())
+                                    // 他アプリからのデータ
+                                    if viewModel.otherAppCalories > 0 {
+                                        HStack {
+                                            Image(systemName: "arrow.up.right.circle")
+                                            Text("他アプリからの入力")
+                                            Spacer()
+                                            Text("\(Int(viewModel.otherAppCalories)) kcal")
+                                        }
+                                        .font(.subheadline)
+                                        .foregroundColor(.secondary)
+                                        .padding(.horizontal, 24)
+                                    }
+                                    
+                                    // 自アプリからの個別リスト
+                                    ForEach(Array(viewModel.ownAppRecords.enumerated()), id: \.element.id) { index, record in
+                                        HStack {
+                                            // 時刻表示
+                                            Text(record.date, style: .time)
+                                                .foregroundColor(.secondary)
+                                            
+                                            Spacer()
+                                            
+                                            // 数値
+                                            Text("\(Int(record.calories)) kcal")
+                                                .padding(.trailing, 4)
+                                            
+                                            // 個別削除ボタン
+                                            Button(role: .destructive) {
+                                                // IndexSetを作ってViewModelの削除メソッドを呼ぶ
+                                                viewModel.deleteCalorieRecord(at: IndexSet(integer: index), for: currentData.date)
+                                            } label: {
+                                                Image(systemName: "minus.circle.fill")
+                                                    .font(.title3)
+                                                    .foregroundColor(.red.opacity(0.8))
+                                            }
+                                            .buttonStyle(PlainButtonStyle())
+                                        }
+                                        .font(.body)
+                                        .padding(.horizontal, 24)
+                                    }
+                                }
+                                .padding(.bottom, 16)
                             }
                             
                             Divider().padding(.horizontal)
                             
+                            // 4. 収支
                             energyRow(icon: "equal.circle", title: String(localized: "収支"), value: currentData.netCalories.map { Text("\(Int($0)) kcal") } ?? Text("-- kcal"), color: currentData.netColor, isLarge: true)
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
@@ -76,7 +165,7 @@ struct DayDetailView: View {
                             Divider().padding(.horizontal)
                             
                             Button(action: {
-                                if let w = currentData.weight { weightInput = String(format: "%.1f", viewModel.convertToUserUnitValue(w)) }
+                                weightInput = ""
                                 showingWeightInput = true
                             }) {
                                 let weightValue = currentData.weight.map { w in
@@ -90,8 +179,16 @@ struct DayDetailView: View {
                             
                             Button(action: {
                                 let baseDate = currentData.date
-                                sleepEnd = Calendar.current.date(bySettingHour: 7, minute: 0, second: 0, of: baseDate) ?? baseDate
-                                sleepStart = Calendar.current.date(byAdding: .day, value: -1, to: baseDate).flatMap { Calendar.current.date(bySettingHour: 23, minute: 0, second: 0, of: $0) } ?? baseDate
+                                // 起床時間の初期値を現在の「時:分」に合わせる（日付は表示日に固定）
+                                let now = Date()
+                                let calendar = Calendar.current
+                                let hour = calendar.component(.hour, from: now)
+                                let minute = calendar.component(.minute, from: now)
+                                
+                                sleepEnd = calendar.date(bySettingHour: hour, minute: minute, second: 0, of: baseDate) ?? baseDate
+                                // 就寝時間の初期値をそこから7時間前にセット
+                                sleepStart = calendar.date(byAdding: .hour, value: -7, to: sleepEnd) ?? sleepEnd
+                                
                                 showingSleepInput = true
                             }) {
                                 let sleepValue = currentData.sleepSeconds.map { s in
@@ -191,6 +288,12 @@ struct DayDetailView: View {
             Button("OK", role: .cancel) { }
         } message: {
             if let message = inputErrorMessage { Text(message) }
+        }
+        .onAppear {
+            viewModel.loadCalorieDetails(for: currentData.date)
+        }
+        .onChange(of: currentData.date) { oldDate, newDate in
+            viewModel.loadCalorieDetails(for: newDate)
         }
     }
     

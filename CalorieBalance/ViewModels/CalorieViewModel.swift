@@ -49,6 +49,10 @@ class CalorieBalanceViewModel: ObservableObject {
     @AppStorage("targetDateInterval", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
     @AppStorage("startingWeight", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var startingWeight: Double = 0.0
     
+    @Published var ownAppRecords: [CalorieRecord] = []
+    @Published var otherAppCalories: Double = 0.0
+    @Published var isDetailLoading: Bool = false
+    
     enum GoalStatus {
         case inProgress
         case achieved
@@ -373,64 +377,71 @@ class CalorieBalanceViewModel: ObservableObject {
     }
     
     // MARK: - 手入力データの保存と同期
-    
     func addDietaryCalories(_ calories: Double, for date: Date) {
-        Task {
-            do {
-                let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-                try await healthKitManager.saveDietaryEnergy(calories: calories, date: saveDate)
-                try await Task.sleep(nanoseconds: 500_000_000)
-                await reloadDataAsync(customStartDate: initialFetchDate)
-            } catch {
-                await MainActor.run { self.errorMessage = "カロリーの保存に失敗: \(error.localizedDescription)" }
-            }
-        }
-    }
-    
-    func addWeight(_ weight: Double, for date: Date) {
-        Task {
-            do {
-                let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
-                try await healthKitManager.saveWeight(weight: weight, date: saveDate)
-                try await Task.sleep(nanoseconds: 500_000_000)
-                await reloadDataAsync(customStartDate: initialFetchDate)
-            } catch {
-                await MainActor.run { self.errorMessage = "体重の保存に失敗: \(error.localizedDescription)" }
-            }
-        }
-    }
-    
-    func addSleep(start: Date, end: Date, targetDate: Date) {
-            let now = Date()
-            
-            // --- バリデーションセクション ---
-            // ここで errorMessage をセットすると親の DailyView がエラー画面に切り替わってしまうため、
-            // 条件に合致しない場合は単に return します。
-            // （View側の Alert がこれと同じ条件でユーザーに警告を表示します）
-            
-            // 1. 未来の保存禁止
-            guard end <= now else { return }
-
-            // 2. 対象日（詳細画面の日付）との整合性チェック
-            if !Calendar.current.isDate(end, inSameDayAs: targetDate) { return }
-
-            // 3. 時間の逆転チェック
-            guard start < end else { return }
-            
-            // 4. 24時間超過チェック
-            let duration = end.timeIntervalSince(start)
-            if duration > 86400 { return }
-            
-            // --- 保存処理セクション ---
             Task {
                 do {
-                    try await healthKitManager.saveSleep(start: start, end: end)
-                    // HealthKitへの反映を待機
+                    // 修正：時刻を12:00固定にするのではなく、現在時刻を合成する
+                    let now = Date()
+                    let calendar = Calendar.current
+                    
+                    // 表示中の日付(年・月・日)に、現在の(時・分・秒)を組み合わせる
+                    let components = calendar.dateComponents([.hour, .minute, .second], from: now)
+                    let saveDate = calendar.date(bySettingHour: components.hour ?? 12,
+                                               minute: components.minute ?? 0,
+                                               second: components.second ?? 0,
+                                               of: date) ?? date
+                    
+                    try await healthKitManager.saveDietaryEnergy(calories: calories, date: saveDate)
+                    
+                    // HealthKitへの書き込み反映を待機
                     try await Task.sleep(nanoseconds: 500_000_000)
-                    // データを再読み込み
+                    
+                    // データの再取得
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                    await MainActor.run {
+                        self.loadCalorieDetails(for: date)
+                    }
+                    
+                } catch {
+                    await MainActor.run { self.errorMessage = "カロリーの保存に失敗: \(error.localizedDescription)" }
+                }
+            }
+        }
+    func addWeight(_ weight: Double, for date: Date) {
+            Task {
+                do {
+                    // 1. まず、その日の既存の自アプリ入力データを削除（上書きの準備）
+                    try await healthKitManager.deleteQuantityData(for: .bodyMass, on: date)
+                    
+                    // 2. 新しいデータを保存
+                    let saveDate = Calendar.current.date(bySettingHour: 12, minute: 0, second: 0, of: date) ?? date
+                    try await healthKitManager.saveWeight(weight: weight, date: saveDate)
+                    
+                    // 3. HealthKitへの反映待機とリロード
+                    try await Task.sleep(nanoseconds: 500_000_000)
                     await reloadDataAsync(customStartDate: initialFetchDate)
                 } catch {
-                    // システム的な失敗（HealthKitの権限拒否など）の場合のみエラーを表示
+                    await MainActor.run { self.errorMessage = "体重の保存に失敗: \(error.localizedDescription)" }
+                }
+            }
+        }
+    func addSleep(start: Date, end: Date, targetDate: Date) {
+            // バリデーション（既存のまま）
+            let now = Date()
+            guard end <= now, Calendar.current.isDate(end, inSameDayAs: targetDate),
+                  start < end, end.timeIntervalSince(start) <= 86400 else { return }
+            
+            Task {
+                do {
+                    // 1. その日の既存の睡眠データを削除
+                    try await healthKitManager.deleteSleepData(on: targetDate)
+                    
+                    // 2. 新しい睡眠期間を保存
+                    try await healthKitManager.saveSleep(start: start, end: end)
+                    
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                } catch {
                     await MainActor.run {
                         self.errorMessage = "睡眠の保存に失敗しました: \(error.localizedDescription)"
                     }
@@ -440,17 +451,26 @@ class CalorieBalanceViewModel: ObservableObject {
     // MARK: - 手入力データの削除
     
     func deleteDietaryCalories(for date: Date) {
-        Task {
-            do {
-                try await healthKitManager.deleteQuantityData(for: .dietaryEnergyConsumed, on: date)
-                try await Task.sleep(nanoseconds: 500_000_000)
-                await reloadDataAsync(customStartDate: initialFetchDate)
-            } catch {
-                await MainActor.run { self.errorMessage = "カロリーの削除に失敗: \(error.localizedDescription)" }
+            Task {
+                do {
+                    // 1. 指定した日の自アプリデータを一括削除
+                    try await healthKitManager.deleteQuantityData(for: .dietaryEnergyConsumed, on: date)
+                    
+                    // 2. HealthKitの反映を待機
+                    try await Task.sleep(nanoseconds: 500_000_000)
+                    
+                    // 3. 全体データの更新（グラフ等のため）
+                    await reloadDataAsync(customStartDate: initialFetchDate)
+                    
+                    // 4. 追加：個別詳細リストの更新（ここが重要）
+                    await MainActor.run {
+                        self.loadCalorieDetails(for: date)
+                    }
+                } catch {
+                    await MainActor.run { self.errorMessage = "カロリーの削除に失敗: \(error.localizedDescription)" }
+                }
             }
         }
-    }
-    
     func deleteWeight(for date: Date) {
         Task {
             do {
@@ -535,5 +555,71 @@ extension CalorieBalanceViewModel {
     func convertToUserUnitValue(_ kgValue: Double) -> Double {
         let measurement = Measurement(value: kgValue, unit: UnitMass.kilograms)
         return measurement.converted(to: userWeightUnit).value
+    }
+}
+// MARK: - 個別カロリー記録（詳細リスト）用ロジック
+extension CalorieBalanceViewModel {
+    
+    // UIを構築するための状態変数（Viewで展開するために@Publishedは不要な場合もありますが、ViewModel内に置くなら@Publishedにします）
+    // 追記: クラスのトップレベルに以下の3つを定義してください
+    /*
+    @Published var ownAppRecords: [CalorieRecord] = []
+    @Published var otherAppCalories: Double = 0.0
+    @Published var isDetailLoading: Bool = false
+    */
+    
+    /// 指定された日のカロリー詳細を取得し、自アプリと他アプリに振り分けます
+    func loadCalorieDetails(for date: Date) {
+        Task {
+            await MainActor.run { self.isDetailLoading = true }
+            
+            do {
+                let records = try await healthKitManager.fetchDailyCalorieRecords(for: date)
+                
+                await MainActor.run {
+                    // 自アプリのデータはリスト表示用に保持
+                    self.ownAppRecords = records.filter { $0.isOwnApp }
+                    
+                    // 他アプリのデータは合計値（Double）として合算
+                    self.otherAppCalories = records
+                        .filter { !$0.isOwnApp }
+                        .reduce(0) { $0 + $1.calories }
+                    
+                    self.isDetailLoading = false
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "詳細データの取得に失敗しました: \(error.localizedDescription)"
+                    self.isDetailLoading = false
+                }
+            }
+        }
+    }
+    
+    /// SwiftUIの .onDelete から呼ばれる削除処理
+    func deleteCalorieRecord(at offsets: IndexSet, for date: Date) {
+        // IndexSetから削除対象のCalorieRecordを特定
+        let recordsToDelete = offsets.map { ownAppRecords[$0] }
+        
+        Task {
+            do {
+                // 1. HealthKitから対象データを個別に削除
+                for record in recordsToDelete {
+                    try await healthKitManager.deleteCalorieRecord(record)
+                }
+                
+                // 2. HealthKitのデータベース同期を待機
+                try await Task.sleep(nanoseconds: 500_000_000)
+                
+                // 3. データの再取得（詳細リストの更新 ＆ 全体グラフの更新）
+                self.loadCalorieDetails(for: date)
+                await self.reloadDataAsync(customStartDate: self.initialFetchDate)
+                
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = "カロリーの削除に失敗しました: \(error.localizedDescription)"
+                }
+            }
+        }
     }
 }

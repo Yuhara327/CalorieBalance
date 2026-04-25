@@ -200,4 +200,70 @@ class HealthKitManager {
         
         try await healthStore.deleteObjects(of: type, predicate: predicate)
     }
+    // MARK: - 個別カロリー記録の管理
+        
+        /// 指定された日のすべてのカロリー記録を取得し、CalorieRecordの配列として返します
+        func fetchDailyCalorieRecords(for date: Date) async throws -> [CalorieRecord] {
+            guard let calorieType = HKQuantityType.quantityType(forIdentifier: .dietaryEnergyConsumed) else {
+                throw HealthKitError.typeInitializationFailed
+            }
+            
+            let calendar = Calendar.current
+            let startDate = calendar.startOfDay(for: date)
+            guard let endDate = calendar.date(byAdding: .day, value: 1, to: startDate) else {
+                // 既存のエラー列挙型に適合させるため、NSErrorをラップするか独自のエラーを投げます
+                throw HealthKitError.healthDataNotAvailable
+            }
+            
+            // strictStartDateを使用せず、既存の実装に合わせたpredicate
+            let predicate = HKQuery.predicateForSamples(withStart: startDate, end: endDate, options: [])
+            let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierStartDate, ascending: false)
+            
+            return try await withCheckedThrowingContinuation { continuation in
+                let query = HKSampleQuery(sampleType: calorieType, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: [sortDescriptor]) { _, samples, error in
+                    
+                    if let error = error {
+                        continuation.resume(throwing: HealthKitError.queryFailed(error))
+                        return
+                    }
+                    
+                    guard let quantitySamples = samples as? [HKQuantitySample] else {
+                        continuation.resume(returning: [])
+                        return
+                    }
+                    
+                    let records = quantitySamples.map { sample -> CalorieRecord in
+                        let calories = sample.quantity.doubleValue(for: .kilocalorie())
+                        let isOwnApp = sample.sourceRevision.source == HKSource.default()
+                        
+                        return CalorieRecord(
+                            id: UUID(),
+                            sample: sample,
+                            calories: calories,
+                            date: sample.startDate,
+                            isOwnApp: isOwnApp
+                        )
+                    }
+                    
+                    continuation.resume(returning: records)
+                }
+                
+                healthStore.execute(query)
+            }
+        }
+        
+        /// 指定されたカロリー記録（HKQuantitySample）を削除します
+        func deleteCalorieRecord(_ record: CalorieRecord) async throws {
+            return try await withCheckedThrowingContinuation { continuation in
+                healthStore.delete(record.sample) { success, error in
+                    if let error = error {
+                        continuation.resume(throwing: HealthKitError.queryFailed(error))
+                    } else if success {
+                        continuation.resume(returning: ())
+                    } else {
+                        continuation.resume(throwing: HealthKitError.healthDataNotAvailable)
+                    }
+                }
+            }
+        }
 }
