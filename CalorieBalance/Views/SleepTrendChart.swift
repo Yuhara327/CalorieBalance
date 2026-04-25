@@ -21,9 +21,6 @@ struct SleepTrendChart: View {
         let sleepMax = 13.0
         let sleepScaleFactor = (calorieRange * 2.0) / sleepMax
         
-        // 【修正】グラフの右端を「明日の0時」に設定し、今日の棒グラフが右に突き抜けるのを防ぐ
-        let chartEndDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: Date())) ?? Date()
-        
         let correlationValue: Double? = {
             let validData = trendData.filter { $0.sleep > 0 }
             guard validData.count > 2 else { return nil }
@@ -76,9 +73,8 @@ struct SleepTrendChart: View {
                     }
                 }
                 .chartXSelection(value: $selectedDate)
-                // 【修正適用】右端を chartEndDate にする
-                .chartXScale(domain: graphStartDate...chartEndDate)
                 .chartXAxis {
+                    // values に axisValues を渡すことで、目盛りの範囲を厳密に制御
                     AxisMarks(values: axisValues) { value in
                         if let date = value.as(Date.self) {
                             let day = Calendar.current.component(.day, from: date)
@@ -91,6 +87,8 @@ struct SleepTrendChart: View {
                         }
                     }
                 }
+                // グラフのプロット領域に適切な内側の余白（インセット）を持たせる
+                .chartXAxis(.visible)
                 .chartYScale(domain: -calorieRange...calorieRange)
                 .chartYAxis {
                     AxisMarks(position: .leading)

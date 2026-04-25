@@ -16,12 +16,8 @@ struct WeightTrendChart: View {
     var body: some View {
         let trendData = viewModel.calculateWeightTrend(from: graphStartDate)
         let now = Date()
-        let safeStartDate = min(graphStartDate, now)
-        let axisValues = calculateAxisValues(startDate: safeStartDate)
+        let axisValues = calculateAxisValues(startDate: graphStartDate)
         let latestCompleteData = trendData.last { $0.actualWeight != nil && $0.predictedWeight != nil }
-
-        // 【修正1】グラフの右端を「明日の0時」に設定し、今日のデータポイントが右に突き抜けるのを防ぐ
-        let chartEndDate = Calendar.current.date(byAdding: .day, value: 1, to: Calendar.current.startOfDay(for: now)) ?? now
 
         VStack(alignment: .leading, spacing: 16) {
             // 凡例の多言語化
@@ -58,9 +54,8 @@ struct WeightTrendChart: View {
                 }
                 .chartXSelection(value: $selectedDate)
                 .chartYScale(domain: .automatic(includesZero: false))
-                // 【修正1適用】右端を chartEndDate にする
-                .chartXScale(domain: safeStartDate...chartEndDate)
                 .chartXAxis {
+                    // values に axisValues を渡すことで、目盛りの範囲を厳密に制御
                     AxisMarks(values: axisValues) { value in
                         if let date = value.as(Date.self) {
                             let day = Calendar.current.component(.day, from: date)
@@ -73,6 +68,8 @@ struct WeightTrendChart: View {
                         }
                     }
                 }
+                // グラフのプロット領域に適切な内側の余白（インセット）を持たせる
+                .chartXAxis(.visible)
                 .chartYAxis {
                     AxisMarks(position: .leading) { value in
                         AxisGridLine()
