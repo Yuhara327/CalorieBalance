@@ -9,7 +9,7 @@ import SwiftUI
 
 struct GoalView: View {
     @ObservedObject var viewModel: CalorieBalanceViewModel
-    // 追加：課金状態の監視
+    // 課金状態の監視
     @StateObject private var subManager = SubscriptionManager.shared
     
     @State private var isShowingSetup = false
@@ -176,10 +176,21 @@ struct GoalView: View {
                 }
                 .frame(width: 160, height: 160)
                 
-                Text(viewModel.goalStatusMessage)
-                    .font(.subheadline).bold()
-                    .padding(.horizontal, 16).padding(.vertical, 8)
-                    .background(Capsule().fill(Color.teal.opacity(0.1)))
+                VStack(spacing: 8) {
+                    Text(viewModel.goalStatusMessage)
+                        .font(.subheadline).bold()
+                        .padding(.horizontal, 16).padding(.vertical, 8)
+                        .background(Capsule().fill(Color.teal.opacity(0.1)))
+                    
+                    HStack {
+                        Image(systemName: "flame.fill")
+                        Text("期間中の合計収支:")
+                        Text("\(Int(viewModel.goalTotalNetCalories)) kcal")
+                            .bold()
+                    }
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                }
             }
         }
         .padding()
@@ -192,41 +203,61 @@ struct GoalView: View {
                 .font(.caption).bold()
                 .foregroundColor(.secondary)
             
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    HStack {
-                        Text(viewModel.goalMode.localizedName).bold()
-                        let targetMass = Measurement(value: viewModel.targetWeight, unit: UnitMass.kilograms)
-                        Text("目標: \(targetMass.formatted(.measurement(width: .abbreviated, usage: .personWeight)))")
-                    }
-                    Text("達成期限: \(viewModel.targetDate.formatted(date: .numeric, time: .omitted))")
-                        .font(.caption).foregroundColor(.secondary)
-                }
-                Spacer()
-                Button { isShowingSetup = true } label: {
-                    Image(systemName: "pencil.circle.fill")
-                        .font(.title2)
-                        .symbolRenderingMode(.hierarchical)
-                        .foregroundStyle(.teal)
-                }
+            VStack(spacing: 12) {
+                // LocalizedStringKey を受け取れるように Text でラップして渡します
+                detailRow(title: String(localized: "モード"), value: Text(viewModel.goalMode.localizedName))
+                
+                let targetMass = Measurement(value: viewModel.targetWeight, unit: UnitMass.kilograms)
+                detailRow(title: String(localized: "目標体重"), value: Text(targetMass.formatted(.measurement(width: .abbreviated, usage: .personWeight))))
+                
+                detailRow(title: String(localized: "開始日"), value: Text(viewModel.goalStartDate.formatted(date: .numeric, time: .omitted)))
+                
+                detailRow(title: String(localized: "達成期限"), value: Text(viewModel.targetDate.formatted(date: .numeric, time: .omitted)))
+                
+                detailRow(title: String(localized: "残り日数"), value: Text(String(localized: "\(viewModel.remainingDays) 日")))
             }
             
             Divider()
             
-            Button(role: .destructive) {
-                withAnimation {
-                    viewModel.isGoalSet = false
-                    viewModel.startingWeight = 0
+            HStack(spacing: 16) {
+                Button {
+                    viewModel.prepareForReselectingGoal()
+                    isShowingSetup = true
+                } label: {
+                    Label(String(localized: "編集"), systemImage: "pencil")
+                        .frame(maxWidth: .infinity)
+                        .bold()
                 }
-            } label: {
-                Text(String(localized: "目標を削除"))
-                    .frame(maxWidth: .infinity)
-                    .bold()
+                .buttonStyle(.bordered)
+                .tint(.teal)
+                
+                Button(role: .destructive) {
+                    withAnimation {
+                        viewModel.isGoalSet = false
+                        viewModel.startingWeight = 0
+                    }
+                } label: {
+                    Text(String(localized: "削除"))
+                        .frame(maxWidth: .infinity)
+                        .bold()
+                }
+                .buttonStyle(.bordered)
             }
-            .buttonStyle(.bordered)
         }
         .padding()
         .glassEffect(in: .rect(cornerRadius: 30.0))
+    }
+    
+    // 引数 value を Text 型に統一することで型競合を解決
+    private func detailRow(title: String, value: Text) -> some View {
+        HStack {
+            Text(title)
+                .foregroundColor(.secondary)
+            Spacer()
+            value
+                .bold()
+        }
+        .font(.subheadline)
     }
     
     private var unsetPlaceholderView: some View {
@@ -245,8 +276,8 @@ struct GoalView: View {
             }
             
             Button {
-                isShowingSetup = true
                 viewModel.prepareForReselectingGoal()
+                isShowingSetup = true
             } label: {
                 Text(String(localized: "目標を設定する"))
                     .bold()
@@ -262,41 +293,39 @@ struct GoalView: View {
     }
 }
 
-// プレビュー群
 #Preview("目標未設定") {
-    let viewModel = CalorieBalanceViewModel()
+    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
     viewModel.isGoalSet = false
-    
     return GoalView(viewModel: viewModel)
 }
 
 #Preview("目標進行中 (減量)") {
-    let viewModel = CalorieBalanceViewModel()
+    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
     viewModel.isGoalSet = true
     viewModel.goalMode = .lose
     viewModel.startingWeight = 75.0
     viewModel.targetWeight = 70.0
-    viewModel.targetDate = Calendar.current.date(byAdding: .month, value: 1, to: Date()) ?? Date()
-    
+    viewModel.goalStartDate = Calendar.current.date(byAdding: .day, value: -10, to: Date()) ?? Date()
+    viewModel.targetDate = Calendar.current.date(byAdding: .day, value: 20, to: Date()) ?? Date()
     return GoalView(viewModel: viewModel)
 }
 
 #Preview("維持モード") {
-    let viewModel = CalorieBalanceViewModel()
+    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
     viewModel.isGoalSet = true
     viewModel.goalMode = .maintain
-    viewModel.startingWeight = 70.0
-    viewModel.targetWeight = 70.0
-    viewModel.dietStartDate = Calendar.current.date(byAdding: .day, value: -15, to: Date()) ?? Date()
+    viewModel.startingWeight = 65.0
+    viewModel.targetWeight = 65.0
+    viewModel.goalStartDate = Calendar.current.date(byAdding: .day, value: -15, to: Date()) ?? Date()
     viewModel.targetDate = Calendar.current.date(byAdding: .day, value: 15, to: Date()) ?? Date()
-    
     return GoalView(viewModel: viewModel)
 }
 
-#Preview("目標達成！") {
-    let viewModel = CalorieBalanceViewModel()
+#Preview("目標達成") {
+    let viewModel = CalorieBalanceViewModel(previewData: DailyMetrics.mockData)
     viewModel.isGoalSet = true
-    viewModel.targetWeight = 70.0
-    
+    viewModel.goalMode = .lose
+    viewModel.startingWeight = 75.0
+    viewModel.targetWeight = 75.0 // 現在の体重(mockData内の最新)と同じにする
     return GoalView(viewModel: viewModel)
 }

@@ -15,7 +15,6 @@ struct WeightTrendChart: View {
 
     var body: some View {
         let trendData = viewModel.calculateWeightTrend(from: graphStartDate)
-        let now = Date()
         let axisValues = calculateAxisValues(startDate: graphStartDate)
         let latestCompleteData = trendData.last { $0.actualWeight != nil && $0.predictedWeight != nil }
 

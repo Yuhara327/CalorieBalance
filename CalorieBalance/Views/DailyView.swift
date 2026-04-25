@@ -16,12 +16,10 @@ struct DailyView: View {
                 AdvancedBackgroundView()
                 
                 if viewModel.isLoading {
-                    // 修正：多言語化対応
                     ProgressView(String(localized: "データを取得中"))
                 } else if let errorMessage = viewModel.errorMessage {
                     VStack {
                         Text(errorMessage).foregroundColor(.red)
-                        // 修正：多環境対応
                         Button(String(localized: "再試行")) {
                             viewModel.requestAccessAndFetchData()
                         }
@@ -33,39 +31,7 @@ struct DailyView: View {
                             .glassEffect(in: .rect(cornerRadius: 30.0))
                             .padding()
                         
-                        List {
-                            if viewModel.filteredData.isEmpty {
-                                // 修正：ContentUnavailableView 内のテキストを多言語化
-                                ContentUnavailableView(
-                                    String(localized: "データがありません"),
-                                    systemImage: "calendar.badge.exclamationmark",
-                                    description: Text("この期間の記録はヘルスケアアプリに見つかりませんでした。")
-                                )
-                            } else {
-                                ForEach(viewModel.filteredData) { data in
-                                    NavigationLink(value: data) {
-                                        DailyCalorieRow(data: data)
-                                    }
-                                    .listRowBackground(Color.clear)
-                                    .padding(4)
-                                }
-                                Color.clear
-                                    .frame(height: 80)
-                                    .listRowBackground(Color.clear)
-                                    .listRowSeparator(.hidden)
-                            }
-                        }
-                        .glassEffect(in: .rect(
-                                topLeadingRadius: 30,
-                                bottomLeadingRadius: 0,
-                                bottomTrailingRadius: 0,
-                                topTrailingRadius: 30,
-                                style: .continuous
-                            ))
-                        .padding([.horizontal, .top])
-                        .ignoresSafeArea(edges: .bottom)
-                        .listStyle(.plain)
-                        .scrollContentBackground(.hidden)
+                        dailyList
                     }
                 }
             }
@@ -77,7 +43,7 @@ struct DailyView: View {
             .toolbar {
                 ToolbarItem(placement: .topBarTrailing) {
                     Link(destination: URL(string: "https://yuhara327.github.io/CalorieBalance/")!) {
-                        Image(systemName: "info.circle") // アイコンはお好みで（shield 等も可）
+                        Image(systemName: "info.circle")
                             .foregroundStyle(.secondary)
                     }
                 }
@@ -89,6 +55,43 @@ struct DailyView: View {
                 await viewModel.refreshData()
             }
         }
+    }
+
+    private var dailyList: some View {
+        List {
+            if viewModel.filteredData.isEmpty {
+                ContentUnavailableView(
+                    String(localized: "データがありません"),
+                    systemImage: "calendar.badge.exclamationmark",
+                    description: Text("この期間の記録はヘルスケアアプリに見つかりませんでした。")
+                )
+            } else {
+                // 日付で降順（新しい順）にソートして表示
+                ForEach(viewModel.filteredData.sorted(by: { $0.date > $1.date })) { data in
+                    NavigationLink(value: data) {
+                        DailyCalorieRow(data: data)
+                    }
+                    .listRowBackground(Color.clear)
+                    .padding(4)
+                }
+                
+                Color.clear
+                    .frame(height: 80)
+                    .listRowBackground(Color.clear)
+                    .listRowSeparator(.hidden)
+            }
+        }
+        .glassEffect(in: .rect(
+            topLeadingRadius: 30,
+            bottomLeadingRadius: 0,
+            bottomTrailingRadius: 0,
+            topTrailingRadius: 30,
+            style: .continuous
+        ))
+        .padding([.horizontal, .top])
+        .ignoresSafeArea(edges: .bottom)
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
     }
 }
 
