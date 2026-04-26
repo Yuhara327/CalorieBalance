@@ -51,7 +51,21 @@ struct WeightTrendChart: View {
                             .foregroundStyle(.separator).zIndex(-1)
                     }
                 }
-                .chartXSelection(value: $selectedDate)
+                .chartXSelection(value: Binding<Date?>(
+                    get: { selectedDate },
+                    set: { newValue in
+                        guard let date = newValue else {
+                            selectedDate = nil
+                            return
+                        }
+                        // trendData の最後の日付を超えないように制限
+                        if let lastDate = trendData.last?.date {
+                            selectedDate = min(date, lastDate)
+                        } else {
+                            selectedDate = date
+                        }
+                    }
+                ))
                 .chartYScale(domain: .automatic(includesZero: false))
                 .chartXAxis {
                     // values に axisValues を渡すことで、目盛りの範囲を厳密に制御

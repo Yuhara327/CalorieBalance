@@ -124,26 +124,75 @@ class HealthKitManager {
     }
     
     private func fetchSleepDuration(start: Date, end: Date) async throws -> [Date: Double] {
-        let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
-        // 修正：開始時間だけでなく、期間内に終了するデータも取得対象に含める
-        let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
-        
-        return try await withCheckedThrowingContinuation { con in
-            let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, err in
-                if let err = err { con.resume(throwing: err); return }
-                var dict: [Date: Double] = [:]
-                (samples as? [HKCategorySample])?.forEach { s in
-                    if s.value != HKCategoryValueSleepAnalysis.inBed.rawValue && s.value != HKCategoryValueSleepAnalysis.awake.rawValue {
-                        // 修正：起床日（endDate）を基準に「何日のデータか」を決定
-                        let day = Calendar.current.startOfDay(for: s.endDate)
-                        dict[day, default: 0] += s.endDate.timeIntervalSince(s.startDate)
+            let type = HKObjectType.categoryType(forIdentifier: .sleepAnalysis)!
+            // 開始時間だけでなく、期間内に終了するデータも取得対象に含める
+            let predicate = HKQuery.predicateForSamples(withStart: start, end: end, options: [])
+            
+            return try await withCheckedThrowingContinuation { con in
+                let query = HKSampleQuery(sampleType: type, predicate: predicate, limit: HKObjectQueryNoLimit, sortDescriptors: nil) { _, samples, err in
+                    if let err = err {
+                        con.resume(throwing: err)
+                        return
                     }
+                    
+                    guard let categorySamples = samples as? [HKCategorySample] else {
+                        con.resume(returning: [:])
+                        return
+                    }
+                    
+                    // 1. 覚醒や就寝中（InBed）などの不要なデータを除外し、実際の睡眠状態のみを抽出
+                    let sleepSamples = categorySamples.filter { s in
+                        s.value == HKCategoryValueSleepAnalysis.asleepUnspecified.rawValue ||
+                        s.value == HKCategoryValueSleepAnalysis.asleepCore.rawValue ||
+                        s.value == HKCategoryValueSleepAnalysis.asleepDeep.rawValue ||
+                        s.value == HKCategoryValueSleepAnalysis.asleepREM.rawValue
+                    }
+                    
+                    // 2. 起床日（endDate）を基準に、サンプルを日単位のグループに分類
+                    var samplesByDay: [Date: [HKCategorySample]] = [:]
+                    for s in sleepSamples {
+                        let day = Calendar.current.startOfDay(for: s.endDate)
+                        samplesByDay[day, default: []].append(s)
+                    }
+                    
+                    var dict: [Date: Double] = [:]
+                    
+                    // 3. 各日ごとに重複する区間をマージし、純粋な睡眠時間を算出
+                    for (day, daySamples) in samplesByDay {
+                        // 開始時間で昇順ソート
+                        let sortedSamples = daySamples.sorted { $0.startDate < $1.startDate }
+                        var mergedIntervals: [(start: Date, end: Date)] = []
+                        
+                        for sample in sortedSamples {
+                            if let last = mergedIntervals.last {
+                                if sample.startDate <= last.end {
+                                    // 区間が重複している場合、終了時間をより遅い方に拡張
+                                    if sample.endDate > last.end {
+                                        mergedIntervals[mergedIntervals.count - 1].end = sample.endDate
+                                    }
+                                } else {
+                                    // 重複がない場合、独立した新しい区間として追加
+                                    mergedIntervals.append((start: sample.startDate, end: sample.endDate))
+                                }
+                            } else {
+                                // 最初の区間
+                                mergedIntervals.append((start: sample.startDate, end: sample.endDate))
+                            }
+                        }
+                        
+                        // 結合された各区間の差分（秒数）の総和を計算
+                        let totalSleepSeconds = mergedIntervals.reduce(0.0) { total, interval in
+                            total + interval.end.timeIntervalSince(interval.start)
+                        }
+                        
+                        dict[day] = totalSleepSeconds
+                    }
+                    
+                    con.resume(returning: dict)
                 }
-                con.resume(returning: dict)
+                healthStore.execute(query)
             }
-            healthStore.execute(query)
         }
-    }
     func saveWeight(weight: Double, date: Date) async throws {
         guard let type = HKQuantityType.quantityType(forIdentifier: .bodyMass) else { return }
         // 修正：.kilogram() ではなく HKUnit.gramUnit(with: .kilo) を明示的に使用
