@@ -17,7 +17,7 @@ struct SummaryHeaderView: View {
     var body: some View {
         VStack(spacing: 10) {
             HStack {
-                Text(String(localized: "表示開始日"))
+                Text(String(localized: "開始日"))
                     .font(.subheadline).foregroundColor(.secondary)
                 Spacer()
                 

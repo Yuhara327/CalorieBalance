@@ -71,7 +71,7 @@ struct DayDetailView: View {
                                 
                                 Spacer()
                                 
-                                (currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text("0 kcal"))
+                                (currentData.dietaryCalories.map { Text("\(Int($0)) kcal") } ?? Text("-- kcal"))
                                     .font(.title)
                                     .bold()
                             }
