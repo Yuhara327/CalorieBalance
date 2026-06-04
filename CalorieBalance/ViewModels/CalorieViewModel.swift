@@ -44,14 +44,10 @@ class CalorieBalanceViewModel: ObservableObject {
     @AppStorage("isGoalSet", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var isGoalSet: Bool = false
     @AppStorage("dietGoalMode", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var goalMode: DietGoalMode = .lose
     @AppStorage("targetWeight", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var targetWeight: Double = 60.0
-    @AppStorage("targetDateInterval", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var targetDateInterval: TimeInterval = Date().addingTimeInterval(86400 * 90).timeIntervalSince1970
     @AppStorage("startingWeight", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) var startingWeight: Double = 0.0
     
-    // 【新設】ゴール設定時の開始日（固定）
-    @AppStorage("goalStartDateInterval", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var goalStartDateInterval: TimeInterval = Date().timeIntervalSince1970
-    
-    // 【新設】トレンド画面での表示開始日（可変）
-    @AppStorage("graphDisplayStartDateInterval", store: UserDefaults(suiteName: "group.yuhara.CalorieBalance")) private var graphDisplayStartDateInterval: TimeInterval = Calendar.current.date(byAdding: .day, value: -29, to: Date())?.timeIntervalSince1970 ?? Date().timeIntervalSince1970
+    // ※ targetDateInterval, goalStartDateInterval, graphDisplayStartDateInterval の @AppStorage は
+    // SwiftUIの同期バグを回避するため削除し、下の Computed Properties で直接 UserDefaults を操作します。
 
     // 詳細画面用
     @Published var ownAppRecords: [CalorieRecord] = []
@@ -60,18 +56,44 @@ class CalorieBalanceViewModel: ObservableObject {
     
     // --- Computed Properties (Date) ---
     var goalStartDate: Date {
-        get { Date(timeIntervalSince1970: goalStartDateInterval) }
-        set { goalStartDateInterval = newValue.timeIntervalSince1970 }
+        get {
+            let interval = UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.double(forKey: "goalStartDateInterval") ?? 0
+            return interval > 0 ? Date(timeIntervalSince1970: interval) : Date()
+        }
+        set {
+            objectWillChange.send()
+            UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.set(newValue.timeIntervalSince1970, forKey: "goalStartDateInterval")
+        }
     }
-    
+
     var graphDisplayStartDate: Date {
-        get { Date(timeIntervalSince1970: graphDisplayStartDateInterval) }
-        set { graphDisplayStartDateInterval = newValue.timeIntervalSince1970 }
+        get {
+            let defaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance")
+            let interval = defaults?.double(forKey: "graphDisplayStartDateInterval") ?? 0
+            if interval > 0 {
+                return Date(timeIntervalSince1970: interval)
+            } else {
+                let defaultDate = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
+                // 初回アクセス時に明示的に初期値をディスクへ保存し、固定化する
+                defaults?.set(defaultDate.timeIntervalSince1970, forKey: "graphDisplayStartDateInterval")
+                return defaultDate
+            }
+        }
+        set {
+            objectWillChange.send()
+            UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.set(newValue.timeIntervalSince1970, forKey: "graphDisplayStartDateInterval")
+        }
     }
-    
+
     var targetDate: Date {
-        get { Date(timeIntervalSince1970: targetDateInterval) }
-        set { targetDateInterval = newValue.timeIntervalSince1970 }
+        get {
+            let interval = UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.double(forKey: "targetDateInterval") ?? 0
+            return interval > 0 ? Date(timeIntervalSince1970: interval) : Date().addingTimeInterval(86400 * 90)
+        }
+        set {
+            objectWillChange.send()
+            UserDefaults(suiteName: "group.yuhara.CalorieBalance")?.set(newValue.timeIntervalSince1970, forKey: "targetDateInterval")
+        }
     }
 
     // --- 目標ステータス・進捗 ---
@@ -178,7 +200,6 @@ class CalorieBalanceViewModel: ObservableObject {
     }
     
     private func reloadDataAsync(customStartDate: Date? = nil) async {
-        // 全ての計算基準（目標開始、グラフ開始、30日前）の中で最も古い日から取得する
         let thirtyDaysAgo = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
         let fetchStart = min(goalStartDate, graphDisplayStartDate, thirtyDaysAgo, customStartDate ?? Date())
         
@@ -201,14 +222,12 @@ class CalorieBalanceViewModel: ObservableObject {
     
     func refreshData() async { await reloadDataAsync(customStartDate: initialFetchDate) }
     
-    // CalorieBalanceViewModel 内に追加
     func changeMonth(by value: Int) {
         if let newMonth = Calendar.current.date(byAdding: .month, value: value, to: selectedMonth) {
             selectedMonth = newMonth
         }
     }
 
-    // 履歴表示用のフィルタリングプロパティも不足していました
     var filteredData: [DailyMetrics] {
         allData.filter { metrics in
             Calendar.current.isDate(metrics.date, equalTo: selectedMonth, toGranularity: .month)
@@ -220,9 +239,12 @@ class CalorieBalanceViewModel: ObservableObject {
         let calendar = Calendar.current
         var chartData: [WeightChartData] = []
         var cumulativeNet = 0.0
-        let baseWeight = startingWeight > 0 ? startingWeight : (allData.first(where: { $0.weight != nil })?.weight ?? targetWeight)
         
-        var current = calendar.startOfDay(for: startDate)
+        let startOfDay = calendar.startOfDay(for: startDate)
+        let validDataFromStart = allData.filter { $0.date >= startOfDay }
+        let baseWeight = startingWeight > 0 ? startingWeight : (validDataFromStart.first(where: { $0.weight != nil })?.weight ?? targetWeight)
+
+        var current = startOfDay
         while current <= calendar.startOfDay(for: Date()) {
             let daily = allData.first(where: { calendar.isDate($0.date, inSameDayAs: current) })
             cumulativeNet += daily?.netCalories ?? 0.0
@@ -359,6 +381,8 @@ class CalorieBalanceViewModel: ObservableObject {
     func prepareForReselectingGoal() {
         self.startingWeight = self.effectiveCurrentWeight
         self.targetDate = Date().addingTimeInterval(86400 * 90)
+        self.goalStartDate = Date()
+        self.graphDisplayStartDate = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
     }
 
     // --- 初期化・Utility ---

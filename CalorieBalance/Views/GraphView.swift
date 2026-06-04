@@ -17,22 +17,12 @@ struct GraphView: View {
     @State private var selectedDate: Date? = nil
     
     init(viewModel: CalorieBalanceViewModel) {
-        self.viewModel = viewModel
-        
-        // 共有の UserDefaults からダイエット開始日を取得
-        let sharedDefaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance")
-        let interval = sharedDefaults?.double(forKey: "dietStartDate") ?? 0
-        
-        let initialDate: Date
-        if interval == 0 {
-            // 設定がない場合は30日前をデフォルトに
-            initialDate = Calendar.current.date(byAdding: .day, value: -29, to: Date()) ?? Date()
-        } else {
-            initialDate = Date(timeIntervalSince1970: interval)
+            self.viewModel = viewModel
+            
+            // ViewModel側で既にストレージから正しい日付が読み込まれているため、
+            // 独自のUserDefaultsアクセスを廃止し、ViewModelの値をそのまま初期値とする。
+            _graphStartDate = State(initialValue: viewModel.graphDisplayStartDate)
         }
-        
-        _graphStartDate = State(initialValue: initialDate)
-    }
     
     var body: some View {
         NavigationStack {
