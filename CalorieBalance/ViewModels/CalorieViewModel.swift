@@ -236,23 +236,53 @@ class CalorieBalanceViewModel: ObservableObject {
 
     // --- Trend Graph Calculation ---
     func calculateWeightTrend(from startDate: Date) -> [WeightChartData] {
-        let calendar = Calendar.current
-        var chartData: [WeightChartData] = []
-        var cumulativeNet = 0.0
-        
-        let startOfDay = calendar.startOfDay(for: startDate)
-        let validDataFromStart = allData.filter { $0.date >= startOfDay }
-        let baseWeight = startingWeight > 0 ? startingWeight : (validDataFromStart.first(where: { $0.weight != nil })?.weight ?? targetWeight)
+            let calendar = Calendar.current
+            var chartData: [WeightChartData] = []
+            
+            let startOfDay = calendar.startOfDay(for: startDate)
+            let periodData = allData.filter { $0.date >= startOfDay }
+            
+            // 1. 期間内の最初の体重計測データ（アンカーポイント）を探す
+            let anchorPoint = periodData.first(where: { $0.weight != nil })
+            
+            let baseWeight: Double
+            
+            if let anchor = anchorPoint, let anchorWeight = anchor.weight {
+                // アンカーポイントが存在する場合
+                // 開始日からアンカー日までの累積カロリーを計算し、開始日時点での「理論上の初期体重（y切片）」を逆算する。
+                // これにより、予測線のプロットがアンカーポイントの実測値と完全に交差する。
+                let caloriesUpToAnchor = periodData
+                    .filter { $0.date <= anchor.date }
+                    .compactMap { $0.netCalories }
+                    .reduce(0, +)
+                
+                baseWeight = anchorWeight - (caloriesUpToAnchor / 7200.0)
+            } else {
+                // 2. 期間内に計測が1日もない場合のフォールバック（仮置き）
+                // 優先順位: 期間以前の最新の体重 -> 初期設定体重(startingWeight) -> 任意の仮置き数値(60.0kg)
+                // ※ターゲット体重は目標値に過ぎず、現在地の仮置きとしては不適なため排除。
+                let pastWeight = allData.filter { $0.date < startOfDay && $0.weight != nil }.last?.weight
+                baseWeight = pastWeight ?? (startingWeight > 0 ? startingWeight : 60.0)
+            }
 
-        var current = startOfDay
-        while current <= calendar.startOfDay(for: Date()) {
-            let daily = allData.first(where: { calendar.isDate($0.date, inSameDayAs: current) })
-            cumulativeNet += daily?.netCalories ?? 0.0
-            chartData.append(WeightChartData(date: current, actualWeight: daily?.weight, predictedWeight: baseWeight + (cumulativeNet / 7200.0)))
-            current = calendar.date(byAdding: .day, value: 1, to: current)!
+            // 3. 配列の生成と予測値のプロット
+            var cumulativeNet = 0.0
+            var current = startOfDay
+            while current <= calendar.startOfDay(for: Date()) {
+                let daily = allData.first(where: { calendar.isDate($0.date, inSameDayAs: current) })
+                cumulativeNet += daily?.netCalories ?? 0.0
+                
+                chartData.append(WeightChartData(
+                    date: current,
+                    actualWeight: daily?.weight,
+                    predictedWeight: baseWeight + (cumulativeNet / 7200.0)
+                ))
+                
+                current = calendar.date(byAdding: .day, value: 1, to: current)!
+            }
+            
+            return chartData
         }
-        return chartData
-    }
 
     func calculateCalorieTrend(from startDate: Date) -> [CalorieChartData] {
         let calendar = Calendar.current
