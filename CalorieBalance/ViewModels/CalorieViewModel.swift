@@ -206,8 +206,28 @@ class CalorieBalanceViewModel: ObservableObject {
         await MainActor.run { self.isLoading = true }
         do {
             try await healthKitManager.requestAuthorization()
-            let endOfToday = Calendar.current.date(bySettingHour: 23, minute: 59, second: 59, of: Date()) ?? Date()
-            let fetched = try await healthKitManager.fetchDailyCalories(startDate: fetchStart, endDate: endOfToday)
+            
+            healthKitManager.startObservingDietaryEnergyChanges { [weak self] in
+                   Task { @MainActor [weak self] in
+                       await self?.refreshData()
+                   }
+               }
+            
+            let calendar = Calendar.current
+            let startOfToday = calendar.startOfDay(for: Date())
+
+            guard let endOfToday = calendar.date(
+                byAdding: .day,
+                value: 1,
+                to: startOfToday
+            ) else {
+                return
+            }
+
+            let fetched = try await healthKitManager.fetchDailyCalories(
+                startDate: fetchStart,
+                endDate: endOfToday
+            )
             
             await MainActor.run {
                 self.allData = fetched
@@ -315,18 +335,35 @@ class CalorieBalanceViewModel: ObservableObject {
     func addDietaryCalories(_ calories: Double, for date: Date) {
         Task {
             do {
-                let now = Date()
                 let calendar = Calendar.current
-                let comp = calendar.dateComponents([.hour, .minute, .second], from: now)
-                let saveDate = calendar.date(bySettingHour: comp.hour ?? 12, minute: comp.minute ?? 0, second: comp.second ?? 0, of: date) ?? date
-                try await healthKitManager.saveDietaryEnergy(calories: calories, date: saveDate)
-                try await Task.sleep(nanoseconds: 500_000_000)
+
+                // カロリーは時刻ではなく「その日の摂取量」として扱う。
+                // 日付境界問題を避けるため12:00に正規化する。
+                let saveDate = calendar.date(
+                    bySettingHour: 12,
+                    minute: 0,
+                    second: 0,
+                    of: date
+                ) ?? date
+
+                try await healthKitManager.saveDietaryEnergy(
+                    calories: calories,
+                    date: saveDate
+                )
+
                 await refreshData()
-                await MainActor.run { self.loadCalorieDetails(for: date) }
-            } catch { await MainActor.run { self.errorMessage = error.localizedDescription } }
+
+                await MainActor.run {
+                    self.loadCalorieDetails(for: date)
+                }
+            } catch {
+                await MainActor.run {
+                    self.errorMessage = error.localizedDescription
+                }
+            }
         }
     }
-
+    
     func addWeight(_ weight: Double, for date: Date) {
         Task {
             do {

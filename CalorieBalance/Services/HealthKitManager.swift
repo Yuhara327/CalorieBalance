@@ -15,6 +15,7 @@ enum HealthKitError: Error {
 
 class HealthKitManager {
     private let healthStore = HKHealthStore()
+    private var dietaryEnergyObserverQuery: HKObserverQuery?
     
     func requestAuthorization() async throws {
         let typesToShare: Set<HKSampleType> = [
@@ -32,6 +33,37 @@ class HealthKitManager {
         ]
         
         try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
+    }
+    
+    func startObservingDietaryEnergyChanges(
+        onChange: @escaping @Sendable () -> Void
+    ) {
+        guard dietaryEnergyObserverQuery == nil else { return }
+
+        guard let type = HKObjectType.quantityType(
+            forIdentifier: .dietaryEnergyConsumed
+        ) else {
+            return
+        }
+
+        let query = HKObserverQuery(
+            sampleType: type,
+            predicate: nil
+        ) { _, completionHandler, error in
+
+            defer {
+                completionHandler()
+            }
+
+            guard error == nil else {
+                return
+            }
+
+            onChange()
+        }
+
+        dietaryEnergyObserverQuery = query
+        healthStore.execute(query)
     }
     
     func fetchDailyCalories(startDate: Date, endDate: Date) async throws -> [DailyMetrics] {
@@ -58,7 +90,7 @@ class HealthKitManager {
         var results: [DailyMetrics] = []
         var currentDate = anchorDate
         
-        while currentDate <= endDate {
+        while currentDate < endDate {
             let aCal = active[currentDate]
             let rCal = resting[currentDate]
             let dCal = dietary[currentDate]

@@ -120,12 +120,6 @@ struct DayDetailView: View {
                                     // 自アプリからの個別リスト
                                     ForEach(Array(viewModel.ownAppRecords.enumerated()), id: \.element.id) { index, record in
                                         HStack {
-                                            // 時刻表示
-                                            Text(record.date, style: .time)
-                                                .foregroundColor(.secondary)
-                                            
-                                            Spacer()
-                                            
                                             // 数値
                                             Text("\(Int(record.calories)) kcal")
                                                 .padding(.trailing, 4)
