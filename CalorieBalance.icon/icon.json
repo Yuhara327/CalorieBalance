@@ -1,19 +1,6 @@
 {
   "fill" : {
-    "linear-gradient" : [
-      "extended-srgb:0.00000,0.75294,0.90980,1.00000",
-      "extended-srgb:0.00000,0.53333,1.00000,1.00000"
-    ],
-    "orientation" : {
-      "start" : {
-        "x" : 0.5,
-        "y" : 0
-      },
-      "stop" : {
-        "x" : 0.5,
-        "y" : 0.7
-      }
-    }
+    "solid" : "extended-srgb:0.00000,0.53333,1.00000,1.00000"
   },
   "groups" : [
     {

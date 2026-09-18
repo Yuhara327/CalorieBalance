@@ -15,7 +15,7 @@ enum HealthKitError: Error {
 
 class HealthKitManager {
     private let healthStore = HKHealthStore()
-    private var dietaryEnergyObserverQuery: HKObserverQuery?
+    private var energyObserverQueries: [HKObserverQuery] = []
     
     func requestAuthorization() async throws {
         let typesToShare: Set<HKSampleType> = [
@@ -35,35 +35,34 @@ class HealthKitManager {
         try await healthStore.requestAuthorization(toShare: typesToShare, read: typesToRead)
     }
     
-    func startObservingDietaryEnergyChanges(
+    func startObservingEnergyChanges(
         onChange: @escaping @Sendable () -> Void
     ) {
-        guard dietaryEnergyObserverQuery == nil else { return }
+        guard energyObserverQueries.isEmpty else { return }
 
-        guard let type = HKObjectType.quantityType(
-            forIdentifier: .dietaryEnergyConsumed
-        ) else {
-            return
-        }
+        let identifiers: [HKQuantityTypeIdentifier] = [
+            .dietaryEnergyConsumed,
+            .activeEnergyBurned,
+            .basalEnergyBurned
+        ]
 
-        let query = HKObserverQuery(
-            sampleType: type,
-            predicate: nil
-        ) { _, completionHandler, error in
-
-            defer {
-                completionHandler()
+        for identifier in identifiers {
+            guard let type = HKObjectType.quantityType(forIdentifier: identifier) else {
+                continue
             }
 
-            guard error == nil else {
-                return
+            let query = HKObserverQuery(
+                sampleType: type,
+                predicate: nil
+            ) { _, completionHandler, error in
+                defer { completionHandler() }
+                guard error == nil else { return }
+                onChange()
             }
 
-            onChange()
+            energyObserverQueries.append(query)
+            healthStore.execute(query)
         }
-
-        dietaryEnergyObserverQuery = query
-        healthStore.execute(query)
     }
     
     func fetchDailyCalories(startDate: Date, endDate: Date) async throws -> [DailyMetrics] {

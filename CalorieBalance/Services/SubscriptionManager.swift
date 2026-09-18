@@ -40,7 +40,17 @@ class SubscriptionManager: ObservableObject {
     // バックグラウンドでのトランザクション監視タスク
     private var updateListenerTask: Task<Void, Never>? = nil
 
+    private static var isRunningForPreviews: Bool {
+        ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1"
+    }
+
     private init() {
+        // Previewでは課金状態の取得を行わず、Pro機能を常に確認できるようにする。
+        if Self.isRunningForPreviews {
+            self.isPremium = true
+            return
+        }
+
         // アプリ起動時に、保存されている直近の状態を読み込む
         self.isPremium = userDefaults?.bool(forKey: "isPremium") ?? false
         

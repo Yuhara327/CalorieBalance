@@ -33,6 +33,14 @@ enum DietGoalMode: String, CaseIterable, Identifiable {
     }
 }
 
+struct EnergyBalanceProjection {
+    let burnedCalories: Double
+    let dietaryCalories: Double?
+    let netCalories: Double?
+    let targetIntakeCalories: Double?
+    let isForecast: Bool
+}
+
 @MainActor
 class CalorieBalanceViewModel: ObservableObject {
     @Published var allData: [DailyMetrics] = []
@@ -129,23 +137,17 @@ class CalorieBalanceViewModel: ObservableObject {
         let elapsed = calendar.dateComponents([.day], from: calendar.startOfDay(for: goalStartDate), to: calendar.startOfDay(for: Date())).day ?? 0
         return max(0.0, min(1.0, Double(elapsed) / Double(total)))
     }
+
+    var goalTargetNetCalories: Double {
+        (targetWeight - startingWeight) * 7200.0
+    }
     
     var achievementRate: Double {
-        guard isGoalSet, startingWeight > 0 else { return 0 }
-        let start = startingWeight
-        let current = effectiveCurrentWeight
-        let target = targetWeight
-        
-        switch goalMode {
-        case .lose:
-            let total = start - target
-            return total > 0 ? min(max((start - current) / total, 0), 1) : (current <= target ? 1.0 : 0.0)
-        case .gain:
-            let total = target - start
-            return total > 0 ? min(max((current - start) / total, 0), 1) : (current >= target ? 1.0 : 0.0)
-        case .maintain:
-            return abs(current - target) <= 1.0 ? 1.0 : 0.0
-        }
+        guard isGoalSet else { return 0 }
+        guard goalMode != .maintain else { return maintenanceProgress }
+        guard abs(goalTargetNetCalories) > 0.5 else { return 0 }
+
+        return min(max(goalTotalNetCalories / goalTargetNetCalories, 0), 1)
     }
     
     var goalStatusMessage: String {
@@ -166,9 +168,21 @@ class CalorieBalanceViewModel: ObservableObject {
     }
     
     var dailyTargetCalories: Double {
-        let diff = targetWeight - effectiveCurrentWeight
-        let days = Calendar.current.dateComponents([.day], from: Date(), to: targetDate).day ?? 1
-        return (diff * 7200.0) / Double(max(days, 1))
+        let remainingNetCalories = goalTargetNetCalories - completedGoalNetCalories
+        return remainingNetCalories / Double(max(remainingDays, 1))
+    }
+
+    func initialDailyTargetCalories(
+        startingWeight: Double,
+        targetWeight: Double,
+        startDate: Date,
+        targetDate: Date
+    ) -> Double {
+        let calendar = Calendar.current
+        let start = calendar.startOfDay(for: startDate)
+        let end = calendar.startOfDay(for: targetDate)
+        let days = calendar.dateComponents([.day], from: start, to: end).day ?? 1
+        return ((targetWeight - startingWeight) * 7200.0) / Double(max(days, 1))
     }
     
     var isDailyGoalAcheived: Bool {
@@ -176,7 +190,7 @@ class CalorieBalanceViewModel: ObservableObject {
         switch goalMode {
         case .lose: return net <= dailyTargetCalories
         case .gain: return net >= dailyTargetCalories
-        case .maintain: return abs(net) <= 200
+        case .maintain: return abs(net - dailyTargetCalories) <= 200
         }
     }
 
@@ -184,6 +198,17 @@ class CalorieBalanceViewModel: ObservableObject {
     var goalTotalNetCalories: Double {
         let startOfDay = Calendar.current.startOfDay(for: goalStartDate)
         return allData.filter { $0.date >= startOfDay }.compactMap { $0.netCalories }.reduce(0, +)
+    }
+
+    private var completedGoalNetCalories: Double {
+        let calendar = Calendar.current
+        let goalStart = calendar.startOfDay(for: goalStartDate)
+        let today = calendar.startOfDay(for: Date())
+
+        return allData
+            .filter { $0.date >= goalStart && $0.date < today }
+            .compactMap { $0.netCalories }
+            .reduce(0, +)
     }
     
     var graphTotalNetCalories: Double {
@@ -207,7 +232,7 @@ class CalorieBalanceViewModel: ObservableObject {
         do {
             try await healthKitManager.requestAuthorization()
             
-            healthKitManager.startObservingDietaryEnergyChanges { [weak self] in
+            healthKitManager.startObservingEnergyChanges { [weak self] in
                    Task { @MainActor [weak self] in
                        await self?.refreshData()
                    }
@@ -252,6 +277,53 @@ class CalorieBalanceViewModel: ObservableObject {
         allData.filter { metrics in
             Calendar.current.isDate(metrics.date, equalTo: selectedMonth, toGranularity: .month)
         }
+    }
+
+    func energyBalanceProjection(for metrics: DailyMetrics) -> EnergyBalanceProjection? {
+        let calendar = Calendar.current
+        let selectedDay = calendar.startOfDay(for: metrics.date)
+        let today = calendar.startOfDay(for: Date())
+        let isToday = selectedDay == today
+
+        let burnedCalories: Double
+
+        if isToday {
+            let completedDays = allData
+                .filter { data in
+                    let day = calendar.startOfDay(for: data.date)
+                    return day < today && data.activeCalories != nil && data.restingCalories != nil
+                }
+                .suffix(14)
+
+            guard !completedDays.isEmpty else { return nil }
+
+            let count = Double(completedDays.count)
+            let averageResting = completedDays.compactMap(\.restingCalories).reduce(0, +) / count
+            let averageActive = completedDays.compactMap(\.activeCalories).reduce(0, +) / count
+
+            // 予測値が、すでに記録済みの実測値を下回らないようにする。
+            let projectedResting = max(averageResting, metrics.restingCalories ?? 0)
+            let projectedActive = max(averageActive, metrics.activeCalories ?? 0)
+            burnedCalories = projectedResting + projectedActive
+        } else {
+            guard let totalBurnedCalories = metrics.totalBurnedCalories else { return nil }
+            burnedCalories = totalBurnedCalories
+        }
+
+        let netCalories = metrics.dietaryCalories.map { $0 - burnedCalories }
+        let targetIntakeCalories: Double? = if isToday && isGoalSet {
+            max(0, burnedCalories + dailyTargetCalories)
+        } else {
+            nil
+        }
+
+        return EnergyBalanceProjection(
+            burnedCalories: burnedCalories,
+            dietaryCalories: metrics.dietaryCalories,
+            netCalories: netCalories,
+            targetIntakeCalories: targetIntakeCalories,
+            isForecast: isToday
+        )
     }
 
     // --- Trend Graph Calculation ---

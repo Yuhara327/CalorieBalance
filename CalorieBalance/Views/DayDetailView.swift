@@ -37,13 +37,17 @@ struct DayDetailView: View {
             
             ScrollView {
                 VStack(spacing: 28) {
-                    if let net = currentData.netCalories {
-                        HStack {
-                            let fatGrams = Measurement(value: abs(currentData.fatEquivalentGram), unit: UnitMass.grams)
-                            Text("脂肪換算で約 \(fatGrams.formatted(.measurement(width: .abbreviated))) \(net <= 0 ? Text("減少") : Text("増加"))")
-                                .font(.headline)
+                    if let projection = viewModel.energyBalanceProjection(for: currentData) {
+                        VStack(spacing: 12) {
+                            sectionHeader(
+                                projection.isForecast
+                                    ? String(localized: "今日の見込み")
+                                    : String(localized: "エネルギーバランス")
+                            )
+
+                            EnergyBalanceChart(projection: projection)
+                                .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
                         }
-                        .padding(.top, 8)
                     }
                     
                     VStack(spacing: 12) {
@@ -320,19 +324,61 @@ struct DayDetailView: View {
         .padding(16)
     }
 }
-#Preview {
-    let viewModel = CalorieBalanceViewModel()
-    let dummyMetrics = DailyMetrics(
-        date: Date(),
-        activeCalories: 1800,
-        restingCalories: 600,
-        dietaryCalories: 1500,
-        steps: 8500,
-        sleepSeconds: 27000, // 7.5時間
-        weight: 70.5        // 正しい位置に修正
-    )
-    
-    NavigationStack {
-        DayDetailView(viewModel: viewModel, metrics: dummyMetrics)
+private struct DayDetailPreview: View {
+    private let viewModel: CalorieBalanceViewModel
+    private let metrics: DailyMetrics
+
+    init() {
+        let calendar = Calendar.current
+        var history: [DailyMetrics] = []
+
+        for daysAgo in (1...14).reversed() {
+            guard let date = calendar.date(byAdding: .day, value: -daysAgo, to: Date()) else {
+                continue
+            }
+
+            history.append(
+                DailyMetrics(
+                    date: date,
+                    activeCalories: 600 + Double(daysAgo % 3) * 50,
+                    restingCalories: 1650 + Double(daysAgo % 2) * 30,
+                    dietaryCalories: 1900,
+                    steps: 7500,
+                    sleepSeconds: 27000,
+                    weight: 70.8
+                )
+            )
+        }
+
+        let today = DailyMetrics(
+            date: Date(),
+            activeCalories: 900,
+            restingCalories: 850,
+            dietaryCalories: 1500,
+            steps: 8500,
+            sleepSeconds: 27000,
+            weight: 70.5
+        )
+
+        let viewModel = CalorieBalanceViewModel(previewData: history + [today])
+        viewModel.isGoalSet = true
+        viewModel.goalMode = .lose
+        viewModel.startingWeight = 72.0
+        viewModel.targetWeight = 68.0
+        viewModel.goalStartDate = calendar.date(byAdding: .day, value: -14, to: Date()) ?? Date()
+        viewModel.targetDate = calendar.date(byAdding: .day, value: 60, to: Date()) ?? Date()
+
+        self.viewModel = viewModel
+        self.metrics = today
     }
+
+    var body: some View {
+        NavigationStack {
+            DayDetailView(viewModel: viewModel, metrics: metrics)
+        }
+    }
+}
+
+#Preview("今日の見込み・目標あり") {
+    DayDetailPreview()
 }

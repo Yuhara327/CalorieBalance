@@ -47,7 +47,7 @@ struct GoalView: View {
             .toolbarTitleDisplayMode(.inlineLarge)
             .sheet(isPresented: $isShowingSetup) {
                 GoalSetupView(viewModel: viewModel)
-                    .presentationDetents([.fraction(0.8)])
+                    .presentationDetents([.fraction(0.9)])
                     .presentationDragIndicator(.visible)
             }
         }
@@ -133,6 +133,10 @@ struct GoalView: View {
                         Text(String(localized: "目標収支")).font(.caption).foregroundColor(.secondary)
                         Text("\(Int(viewModel.dailyTargetCalories)) kcal")
                             .font(.title2).bold()
+
+                        Text(String(localized: "昨日までの収支と残り日数から毎日再計算されます"))
+                            .font(.caption2)
+                            .foregroundColor(.secondary)
                     }
                     Spacer()
                     Image(systemName: viewModel.isDailyGoalAcheived ? "checkmark.circle.fill" : "circle")
@@ -159,10 +163,10 @@ struct GoalView: View {
                         .rotationEffect(.degrees(-90))
                     
                     if viewModel.goalMode == .maintain {
-                        VStack(spacing: -4) {
-                            Text(viewModel.remainingDays, format: .number)
-                                .font(.system(size: 54, weight: .bold, design: .rounded))
-                            Text(String(localized: "残り日数"))
+                        VStack {
+                            Text(viewModel.maintenanceProgress, format: .percent.precision(.fractionLength(0)))
+                                .font(.system(size: 40, weight: .bold, design: .rounded))
+                            Text(String(localized: "期間進捗"))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                         }
@@ -170,17 +174,27 @@ struct GoalView: View {
                         VStack {
                             Text(viewModel.achievementRate, format: .percent.precision(.fractionLength(0)))
                                 .font(.system(size: 40, weight: .bold, design: .rounded))
-                            Text(String(localized: "達成状況")).font(.caption).foregroundColor(.secondary)
+                            Text(String(localized: "収支目標")).font(.caption).foregroundColor(.secondary)
                         }
                     }
                 }
                 .frame(width: 160, height: 160)
                 
                 VStack(spacing: 8) {
-                    Text(viewModel.goalStatusMessage)
-                        .font(.subheadline).bold()
-                        .padding(.horizontal, 16).padding(.vertical, 8)
-                        .background(Capsule().fill(Color.teal.opacity(0.1)))
+                    HStack(spacing: 24) {
+                        weightSummary(
+                            title: String(localized: "現在"),
+                            weight: viewModel.effectiveCurrentWeight
+                        )
+
+                        Divider()
+                            .frame(height: 32)
+
+                        weightSummary(
+                            title: String(localized: "目標"),
+                            weight: viewModel.targetWeight
+                        )
+                    }
                     
                     HStack {
                         Image(systemName: "flame.fill")
@@ -258,6 +272,19 @@ struct GoalView: View {
                 .bold()
         }
         .font(.subheadline)
+    }
+
+    private func weightSummary(title: String, weight: Double) -> some View {
+        let measurement = Measurement(value: weight, unit: UnitMass.kilograms)
+
+        return VStack(spacing: 2) {
+            Text(title)
+                .font(.caption2)
+                .foregroundColor(.secondary)
+            Text(measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
+                .font(.subheadline)
+                .bold()
+        }
     }
     
     private var unsetPlaceholderView: some View {

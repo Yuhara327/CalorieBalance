@@ -22,6 +22,36 @@ struct GoalSetupView: View {
         default: return false
         }
     }
+
+    private var previewDailyTargetCalories: Double? {
+        guard isInputValid else { return nil }
+
+        let unit = viewModel.userWeightUnit
+        let startingWeight = Measurement(value: currentWeightInput, unit: unit)
+            .converted(to: .kilograms)
+            .value
+        let targetWeight = viewModel.goalMode == .maintain
+            ? startingWeight
+            : Measurement(value: targetWeightInput, unit: unit)
+                .converted(to: .kilograms)
+                .value
+
+        return viewModel.initialDailyTargetCalories(
+            startingWeight: startingWeight,
+            targetWeight: targetWeight,
+            startDate: viewModel.goalStartDate,
+            targetDate: viewModel.targetDate
+        )
+    }
+
+    private func signedCalories(_ value: Double) -> String {
+        guard abs(value) >= 0.5 else { return "0" }
+        return value.formatted(
+            .number
+                .precision(.fractionLength(0))
+                .sign(strategy: .always())
+        )
+    }
     
     var body: some View {
         NavigationStack {
@@ -130,6 +160,22 @@ struct GoalSetupView: View {
                         .padding()
                     }
                     .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30))
+
+                    if let previewDailyTargetCalories {
+                        VStack(spacing: 6) {
+                            Text(String(localized: "1日の目標収支"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+
+                            Text(verbatim: "\(signedCalories(previewDailyTargetCalories)) kcal")
+                                .font(.system(.title, design: .rounded))
+                                .bold()
+                                .foregroundColor(previewDailyTargetCalories <= 0 ? .green : .red)
+                        }
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 30))
+                    }
                     
                     // --- セクション3: 開始ボタン ---
                     Button {
