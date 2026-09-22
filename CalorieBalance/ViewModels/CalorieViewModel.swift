@@ -291,19 +291,52 @@ class CalorieBalanceViewModel: ObservableObject {
             let completedDays = allData
                 .filter { data in
                     let day = calendar.startOfDay(for: data.date)
-                    return day < today && data.activeCalories != nil && data.restingCalories != nil
+                    return day < today
+                        && data.activeCalories != nil
+                        && (data.restingCalories ?? 0) > 0
                 }
-                .suffix(14)
+                .sorted { $0.date < $1.date }
+                .suffix(28)
 
             guard !completedDays.isEmpty else { return nil }
 
-            let count = Double(completedDays.count)
-            let averageResting = completedDays.compactMap(\.restingCalories).reduce(0, +) / count
-            let averageActive = completedDays.compactMap(\.activeCalories).reduce(0, +) / count
+            let activeValues = completedDays.compactMap(\.activeCalories)
+            guard let baselineActive = percentile(0.25, of: activeValues) else { return nil }
+
+            // 安静時消費は比較的安定しているため、従来どおり直近14有効日の平均を使う。
+            let restingDays = completedDays.suffix(14)
+            let averageResting = restingDays.compactMap(\.restingCalories).reduce(0, +)
+                / Double(restingDays.count)
+
+            let todayResting = max(metrics.restingCalories ?? 0, 0)
+            let todayActive = max(metrics.activeCalories ?? 0, 0)
+
+            // 安静時消費の進み具合を、一日の経過率として利用する。
+            // 今日の安静時消費がまだ取得できていない場合のみ、時計上の経過率へフォールバックする。
+            let dayProgress: Double = {
+                if metrics.restingCalories != nil, averageResting > 0 {
+                    return min(max(todayResting / averageResting, 0), 1)
+                }
+
+                guard let endOfToday = calendar.date(byAdding: .day, value: 1, to: today) else {
+                    return 0
+                }
+                let dayDuration = endOfToday.timeIntervalSince(today)
+                guard dayDuration > 0 else { return 0 }
+                return min(max(Date().timeIntervalSince(today) / dayDuration, 0), 1)
+            }()
+
+            // 25%点を「追加運動がなくても到達しそうな基準値」とし、
+            // 今日すでに基準ペースを上回った分だけを確定済みの上振れとして加える。
+            let expectedActiveByNow = baselineActive * dayProgress
+            let confirmedExcessActive = max(0, todayActive - expectedActiveByNow)
+            let projectedActive = max(
+                todayActive,
+                baselineActive + confirmedExcessActive
+            )
 
             // 予測値が、すでに記録済みの実測値を下回らないようにする。
             let projectedResting = max(averageResting, metrics.restingCalories ?? 0)
-            let projectedActive = max(averageActive, metrics.activeCalories ?? 0)
             burnedCalories = projectedResting + projectedActive
         } else {
             guard let totalBurnedCalories = metrics.totalBurnedCalories else { return nil }
@@ -324,6 +357,24 @@ class CalorieBalanceViewModel: ObservableObject {
             targetIntakeCalories: targetIntakeCalories,
             isForecast: isToday
         )
+    }
+
+    private func percentile(_ percentile: Double, of values: [Double]) -> Double? {
+        guard !values.isEmpty else { return nil }
+
+        let sortedValues = values.sorted()
+        let boundedPercentile = min(max(percentile, 0), 1)
+        let position = Double(sortedValues.count - 1) * boundedPercentile
+        let lowerIndex = Int(position.rounded(.down))
+        let upperIndex = Int(position.rounded(.up))
+
+        guard lowerIndex != upperIndex else {
+            return sortedValues[lowerIndex]
+        }
+
+        let fraction = position - Double(lowerIndex)
+        return sortedValues[lowerIndex]
+            + (sortedValues[upperIndex] - sortedValues[lowerIndex]) * fraction
     }
 
     // --- Trend Graph Calculation ---
