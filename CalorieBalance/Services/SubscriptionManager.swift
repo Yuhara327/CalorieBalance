@@ -9,6 +9,7 @@ import Foundation
 import StoreKit
 import SwiftUI
 import Combine
+import OSLog
 
 @MainActor
 class SubscriptionManager: ObservableObject {
@@ -36,6 +37,11 @@ class SubscriptionManager: ObservableObject {
         "com.yuhara.CalorieBalance.monthly",
         "com.yuhara.CalorieBalance.yearly"
     ]
+
+    nonisolated private static let logger = Logger(
+        subsystem: "com.yuhara.CalorieBalance",
+        category: "StoreKit"
+    )
 
     // バックグラウンドでのトランザクション監視タスク
     private var updateListenerTask: Task<Void, Never>? = nil
@@ -77,13 +83,26 @@ class SubscriptionManager: ObservableObject {
             // 価格順（月額 -> 年額）にソートして保持
             self.products = storeProducts.sorted(by: { $0.price < $1.price })
         } catch {
-            print("Failed product request from the App Store server: \(error)")
+            let nsError = error as NSError
+            Self.logger.error(
+                "Product request failed: domain=\(nsError.domain, privacy: .public) code=\(nsError.code)"
+            )
         }
     }
 
     // MARK: - 購入処理
-    func purchase(_ product: Product) async throws {
-        let result = try await product.purchase()
+    func purchase(_ product: Product) async throws -> PurchaseOutcome {
+        let result: Product.PurchaseResult
+
+        do {
+            result = try await product.purchase()
+        } catch {
+            let nsError = error as NSError
+            Self.logger.error(
+                "Purchase failed for product ID \(product.id, privacy: .public): domain=\(nsError.domain, privacy: .public) code=\(nsError.code)"
+            )
+            throw error
+        }
 
         switch result {
         case .success(let verification):
@@ -94,18 +113,63 @@ class SubscriptionManager: ObservableObject {
             await transaction.finish()
             
             // ユーザーの課金状態を再計算
-            await updateCustomerProductStatus()
+            let status = await updateCustomerProductStatus()
+
+            if status.hasActiveSubscription {
+                return .purchased
+            }
+
+            if status.hadVerificationFailure {
+                throw StoreError.failedVerification
+            }
+
+            Self.logger.error(
+                "Purchase succeeded but no active entitlement was returned for product ID: \(product.id, privacy: .public)"
+            )
+            return .entitlementNotFound
             
-        case .userCancelled, .pending:
-            break
-        default:
-            break
+        case .userCancelled:
+            return .cancelled
+
+        case .pending:
+            return .pending
+
+        @unknown default:
+            throw StoreError.unknownPurchaseResult
         }
     }
 
+    // MARK: - 購入の復元
+    func restorePurchases() async throws -> RestoreOutcome {
+        do {
+            try await AppStore.sync()
+        } catch {
+            let nsError = error as NSError
+            Self.logger.error(
+                "App Store sync failed: domain=\(nsError.domain, privacy: .public) code=\(nsError.code)"
+            )
+            throw error
+        }
+
+        let status = await updateCustomerProductStatus()
+
+        if status.hasActiveSubscription {
+            return .restored
+        }
+
+        if status.hadVerificationFailure {
+            throw StoreError.failedVerification
+        }
+
+        Self.logger.error("App Store sync completed, but no active subscription entitlement was returned")
+        return .noActiveSubscription
+    }
+
     // MARK: - 現在の課金状態の確認
-    func updateCustomerProductStatus() async {
+    @discardableResult
+    private func updateCustomerProductStatus() async -> EntitlementRefreshResult {
         var purchased: Set<String> = []
+        var hadVerificationFailure = false
 
         // ユーザーが現在有効なサブスクリプション（Entitlements）をすべて取得
         for await result in Transaction.currentEntitlements {
@@ -117,7 +181,8 @@ class SubscriptionManager: ObservableObject {
                     purchased.insert(transaction.productID)
                 }
             } catch {
-                print("Transaction verification failed: \(error)")
+                hadVerificationFailure = true
+                Self.logger.error("Transaction verification failed while refreshing current entitlements")
             }
         }
 
@@ -125,6 +190,11 @@ class SubscriptionManager: ObservableObject {
         
         // 1つでも有効なサブスクリプションがあればプレミアム権限を付与
         self.isPremium = !purchasedProductIDs.isEmpty
+
+        return EntitlementRefreshResult(
+            hasActiveSubscription: self.isPremium,
+            hadVerificationFailure: hadVerificationFailure
+        )
     }
 
     // MARK: - バックグラウンドトランザクションの監視
@@ -137,7 +207,7 @@ class SubscriptionManager: ObservableObject {
                     await transaction.finish()
                     await self.updateCustomerProductStatus()
                 } catch {
-                    print("Transaction failed verification")
+                    Self.logger.error("Transaction update failed verification")
                 }
             }
         }
@@ -159,4 +229,22 @@ class SubscriptionManager: ObservableObject {
 
 enum StoreError: Error {
     case failedVerification
+    case unknownPurchaseResult
+}
+
+enum PurchaseOutcome {
+    case purchased
+    case pending
+    case cancelled
+    case entitlementNotFound
+}
+
+enum RestoreOutcome {
+    case restored
+    case noActiveSubscription
+}
+
+private struct EntitlementRefreshResult {
+    let hasActiveSubscription: Bool
+    let hadVerificationFailure: Bool
 }

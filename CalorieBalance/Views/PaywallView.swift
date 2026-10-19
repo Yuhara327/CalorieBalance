@@ -14,6 +14,7 @@ struct PaywallView: View {
     
     @State private var selectedProduct: Product?
     @State private var isPurchasing: Bool = false
+    @State private var subscriptionAlert: SubscriptionAlert?
     
     var body: some View {
             // 【重要】NavigationStackを完全に削除し、ZStackをルートにする
@@ -116,13 +117,33 @@ struct PaywallView: View {
                                 guard let selected = selectedProduct else { return }
                                 Task {
                                     isPurchasing = true
+                                    defer { isPurchasing = false }
+
                                     do {
-                                        try await subManager.purchase(selected)
-                                        if subManager.isPremium { dismiss() }
+                                        let outcome = try await subManager.purchase(selected)
+
+                                        switch outcome {
+                                        case .purchased:
+                                            dismiss()
+                                        case .pending:
+                                            subscriptionAlert = SubscriptionAlert(
+                                                title: String(localized: "購入は保留中です"),
+                                                message: String(localized: "購入の承認が完了すると、Pro機能が利用可能になります。")
+                                            )
+                                        case .cancelled:
+                                            break
+                                        case .entitlementNotFound:
+                                            subscriptionAlert = SubscriptionAlert(
+                                                title: String(localized: "購入情報を確認できませんでした"),
+                                                message: String(localized: "購入は完了しましたが、有効なサブスクリプションを確認できませんでした。しばらくしてから「以前の購入を復元」をお試しください。")
+                                                    + "\n\n"
+                                                    + String(localized: "診断コード")
+                                                    + ": PURCHASE_ENTITLEMENT_MISSING"
+                                            )
+                                        }
                                     } catch {
-                                        print("決済プロセス中断: \(error)")
+                                        subscriptionAlert = purchaseErrorAlert(for: error)
                                     }
-                                    isPurchasing = false
                                 }
                             } label: {
                                 if isPurchasing {
@@ -151,10 +172,26 @@ struct PaywallView: View {
                                 Button(String(localized: "以前の購入を復元")) {
                                     Task {
                                         isPurchasing = true
-                                        try? await AppStore.sync()
-                                        await subManager.updateCustomerProductStatus()
-                                        if subManager.isPremium { dismiss() }
-                                        isPurchasing = false
+                                        defer { isPurchasing = false }
+
+                                        do {
+                                            let outcome = try await subManager.restorePurchases()
+
+                                            switch outcome {
+                                            case .restored:
+                                                dismiss()
+                                            case .noActiveSubscription:
+                                                subscriptionAlert = SubscriptionAlert(
+                                                    title: String(localized: "復元できる有効な購入が見つかりませんでした"),
+                                                    message: String(localized: "復元処理は完了しましたが、有効なサブスクリプションを確認できませんでした。")
+                                                        + "\n\n"
+                                                        + String(localized: "診断コード")
+                                                        + ": RESTORE_NO_ACTIVE_ENTITLEMENT"
+                                                )
+                                            }
+                                        } catch {
+                                            subscriptionAlert = restoreErrorAlert(for: error)
+                                        }
                                     }
                                 }
                                 .disabled(isPurchasing)
@@ -198,8 +235,59 @@ struct PaywallView: View {
                     selectedProduct = subManager.products.first(where: { $0.id.contains("yearly") }) ?? subManager.products.last
                 }
             }
+            .alert(item: $subscriptionAlert) { alert in
+                Alert(
+                    title: Text(alert.title),
+                    message: Text(alert.message),
+                    dismissButton: .default(Text(String(localized: "OK")))
+                )
+            }
         }
     // MARK: - Helper Views
+
+    private func purchaseErrorAlert(for error: Error) -> SubscriptionAlert {
+        errorAlert(
+            for: error,
+            defaultTitle: String(localized: "購入を完了できませんでした"),
+            diagnosticPrefix: "PURCHASE_FAILED"
+        )
+    }
+
+    private func restoreErrorAlert(for error: Error) -> SubscriptionAlert {
+        errorAlert(
+            for: error,
+            defaultTitle: String(localized: "購入情報を復元できませんでした"),
+            diagnosticPrefix: "RESTORE_SYNC_FAILED"
+        )
+    }
+
+    private func errorAlert(
+        for error: Error,
+        defaultTitle: String,
+        diagnosticPrefix: String
+    ) -> SubscriptionAlert {
+        if let storeError = error as? StoreError,
+           case .failedVerification = storeError {
+            return SubscriptionAlert(
+                title: String(localized: "購入情報を検証できませんでした"),
+                message: String(localized: "Apple Accountへのサインイン状態と通信環境を確認して、もう一度お試しください。")
+                    + "\n\n"
+                    + String(localized: "診断コード")
+                    + ": TRANSACTION_UNVERIFIED"
+            )
+        }
+
+        let nsError = error as NSError
+        let diagnosticCode = "\(diagnosticPrefix) / \(nsError.domain):\(nsError.code)"
+
+        return SubscriptionAlert(
+            title: defaultTitle,
+            message: String(localized: "Apple Accountへのサインイン状態と通信環境を確認して、もう一度お試しください。")
+                + "\n\n"
+                + String(localized: "診断コード")
+                + ": \(diagnosticCode)"
+        )
+    }
     
     @ViewBuilder
     private func screenshotImage(imageName: String) -> some View {
@@ -289,6 +377,12 @@ struct PaywallView: View {
         }
         .buttonStyle(.plain)
     }
+}
+
+private struct SubscriptionAlert: Identifiable {
+    let id = UUID()
+    let title: String
+    let message: String
 }
 
 #Preview {
