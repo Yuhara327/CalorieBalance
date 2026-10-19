@@ -30,6 +30,9 @@
     ],
     "_timeRate" : 0
   },
+  "subscriptionBundleGroups" : [
+
+  ],
   "subscriptionGroups" : [
     {
       "id" : "F7E14CB3",
@@ -41,6 +44,15 @@
         {
           "adHocOffers" : [
 
+          ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "400",
+              "displayPrice" : "400",
+              "internalID" : "F6B5AB0C",
+              "isEnabled" : true
+            }
           ],
           "codeOffers" : [
 
@@ -77,6 +89,15 @@
           "adHocOffers" : [
 
           ],
+          "billingPlans" : [
+            {
+              "billingPlanType" : "BILLED_UPFRONT",
+              "commitmentDisplayPrice" : "4000",
+              "displayPrice" : "4000",
+              "internalID" : "71512FEC",
+              "isEnabled" : true
+            }
+          ],
           "codeOffers" : [
 
           ],
@@ -111,8 +132,11 @@
       ]
     }
   ],
+  "subscriptionSuiteGroups" : [
+
+  ],
   "version" : {
-    "major" : 5,
-    "minor" : 0
+    "major" : 6,
+    "minor" : 3
   }
 }
