@@ -20,6 +20,10 @@ struct SleepTrendChart: View {
         let calorieRange = max(dailyAbsMax * 1.5, 100.0)
         let sleepMax = 13.0
         let sleepScaleFactor = (calorieRange * 2.0) / sleepMax
+        let sleepHours = [0.0, 4.0, 8.0, 12.0]
+        let sleepAxisValues = sleepHours
+            .map { calorieRange - ($0 * sleepScaleFactor) }
+            .sorted()
         
         let correlationValue: Double? = {
             let validData = trendData.filter { $0.sleep > 0 }
@@ -107,29 +111,51 @@ struct SleepTrendChart: View {
                 .chartYAxis {
                     AxisMarks(position: .leading)
                     
-                    let sleepLabels: [Double] = [0, 4, 8, 12]
-                    AxisMarks(position: .trailing, values: sleepLabels.map { calorieRange - ($0 * sleepScaleFactor) }) { value in
+                    AxisMarks(position: .trailing, values: sleepAxisValues) { value in
+                        AxisTick()
                         if let yVal = value.as(Double.self) {
                             AxisValueLabel {
                                 let h = (calorieRange - yVal) / sleepScaleFactor
                                 if h.isFinite {
                                     Text("\(h, format: .number.precision(.fractionLength(0))) h")
-                                        .foregroundColor(.indigo)
+                                        .hidden()
                                 } else {
                                     Text("-- h")
-                                        .foregroundColor(.indigo)
+                                        .hidden()
                                 }
                             }
                         }
                     }
                 }
+                .chartYAxis(.visible)
+                .frame(maxWidth: .infinity)
                 .frame(height: 250)
                 .chartOverlay { proxy in
                     GeometryReader { geometry in
-                        if let selectedDate, let data = trendData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
-                            let dateX = proxy.position(forX: data.date) ?? 0
-                            popoverView(data: data)
-                                .position(x: calculatePopoverX(dateX: dateX, geometry: geometry), y: 20)
+                        ZStack(alignment: .topLeading) {
+                            if let plotFrame = proxy.plotFrame {
+                                let frame = geometry[plotFrame]
+                                ForEach(sleepHours, id: \.self) { hours in
+                                    let yValue = calorieRange - (hours * sleepScaleFactor)
+                                    if let plotY = proxy.position(forY: yValue) {
+                                        Text("\(hours, format: .number.precision(.fractionLength(0))) h")
+                                            .font(.caption)
+                                            .foregroundStyle(.indigo)
+                                            .fixedSize()
+                                            .position(
+                                                x: frame.maxX + ((geometry.size.width - frame.maxX) / 2),
+                                                y: frame.minY + plotY
+                                            )
+                                            .allowsHitTesting(false)
+                                    }
+                                }
+                            }
+
+                            if let selectedDate, let data = trendData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
+                                let dateX = proxy.position(forX: data.date) ?? 0
+                                popoverView(data: data)
+                                    .position(x: calculatePopoverX(dateX: dateX, geometry: geometry), y: 20)
+                            }
                         }
                     }
                 }

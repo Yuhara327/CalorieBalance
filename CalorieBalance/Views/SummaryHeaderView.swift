@@ -34,8 +34,7 @@ struct SummaryHeaderView: View {
                     .font(.title).bold()
                     .foregroundColor(viewModel.graphTotalNetCalories <= 0 ? .green : .red)
                 
-                let fatMeasurement = Measurement(value: abs(totalFatEquivalent), unit: UnitMass.kilograms)
-                Text("脂肪換算で約 \(fatMeasurement.formatted(.measurement(width: .abbreviated, usage: .personWeight)))")
+                Text("脂肪換算で約 \(viewModel.formattedWeight(abs(totalFatEquivalent)))")
                     .font(.footnote).foregroundColor(.secondary)
             }
             

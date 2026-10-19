@@ -95,7 +95,7 @@ struct GoalSetupView: View {
                             Label(String(localized: "現在の体重"), systemImage: "figure.walk")
                             Spacer()
                             HStack(spacing: 8) {
-                                TextField("0.0", value: $currentWeightInput, format: .number.precision(.fractionLength(1)))
+                                TextField("0.00", value: $currentWeightInput, format: .number.precision(.fractionLength(2)))
                                     .keyboardType(.decimalPad)
                                     .multilineTextAlignment(.trailing)
                                     .focused($isTextFieldFocused)
@@ -122,7 +122,7 @@ struct GoalSetupView: View {
                                     Label(String(localized: "目標体重"), systemImage: "target")
                                     Spacer()
                                     HStack(spacing: 8) {
-                                        TextField("0.0", value: $targetWeightInput, format: .number.precision(.fractionLength(1)))
+                                        TextField("0.00", value: $targetWeightInput, format: .number.precision(.fractionLength(2)))
                                             .keyboardType(.decimalPad)
                                             .multilineTextAlignment(.trailing)
                                             .focused($isTextFieldFocused)

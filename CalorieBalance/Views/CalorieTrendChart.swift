@@ -26,6 +26,14 @@ struct CalorieTrendChart: View {
                 return 1.0
             }
         }()
+        let yAxisMaximum = niceAxisMaximum(max(max(dailyMax, cumulativeMax / dynamicScaleFactor), 100))
+        let yAxisValues = [
+            -yAxisMaximum,
+            -yAxisMaximum / 2,
+            0,
+            yAxisMaximum / 2,
+            yAxisMaximum
+        ]
         let averageNet = trendData.isEmpty ? 0 : trendData.map { $0.dailyNet }.reduce(0, +) / Double(trendData.count)
         
         VStack(alignment: .leading, spacing: 16) {
@@ -51,15 +59,6 @@ struct CalorieTrendChart: View {
                         .foregroundStyle(item.dailyNet <= 0 ? .green : .red)
                     }
                     
-                    RuleMark(y: .value("平均", averageNet))
-                        .foregroundStyle(.primary)
-                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
-                        .annotation(position: .top, alignment: .trailing) {
-                            Text("平均: \(averageNet, format: .number.precision(.fractionLength(0)))")
-                                .font(.caption)
-                                .foregroundColor(.primary)
-                        }
-                    
                     ForEach(trendData) { item in
                         LineMark(
                             x: .value("日付", item.date, unit: .day),
@@ -75,6 +74,24 @@ struct CalorieTrendChart: View {
                         .foregroundStyle(.orange)
                         .symbolSize(30)
                     }
+
+                    // Keep the period average above every data mark so neither
+                    // bars nor the cumulative line obscure it.
+                    RuleMark(y: .value("平均", averageNet))
+                        .foregroundStyle(.primary)
+                        .lineStyle(StrokeStyle(lineWidth: 1, dash: [5, 5]))
+                        .zIndex(10)
+                        .annotation(position: .top, alignment: .trailing) {
+                            Text("平均: \(averageNet, format: .number.precision(.fractionLength(0)))")
+                                .font(.caption)
+                                .foregroundColor(.primary)
+                                .padding(.horizontal, 4)
+                                .padding(.vertical, 2)
+                                .background(
+                                    Color(uiColor: .secondarySystemBackground).opacity(0.92),
+                                    in: RoundedRectangle(cornerRadius: 4)
+                                )
+                        }
                     
                     if let selectedDate {
                         RuleMark(x: .value("Selected", selectedDate, unit: .day))
@@ -114,7 +131,7 @@ struct CalorieTrendChart: View {
                 // グラフのプロット領域に適切な内側の余白（インセット）を持たせる
                 .chartXAxis(.visible)
                 .chartYAxis {
-                    AxisMarks(position: .leading, values: .automatic) { value in
+                    AxisMarks(position: .leading, values: yAxisValues) { value in
                         AxisGridLine()
                         if let kcal = value.as(Double.self) {
                             AxisValueLabel {
@@ -123,23 +140,49 @@ struct CalorieTrendChart: View {
                         }
                     }
                     
-                    AxisMarks(position: .trailing, values: .automatic) { value in
+                    AxisMarks(position: .trailing, values: yAxisValues) { value in
+                        AxisTick()
                         if let kcal = value.as(Double.self) {
                             AxisValueLabel {
-                                let kValue = Int(kcal * dynamicScaleFactor / 1000)
-                                Text("\(kValue)k")
-                                    .foregroundColor(.orange)
+                                // Reserve the correct trailing-axis width. The
+                                // visible text is rendered in chartOverlay to
+                                // avoid the trailing labels disappearing when
+                                // this chart is hosted inside GraphView.
+                                Text(compactAxisLabel(kcal * dynamicScaleFactor))
+                                    .hidden()
                             }
                         }
                     }
                 }
+                .chartYAxis(.visible)
+                .chartYScale(domain: -yAxisMaximum...yAxisMaximum)
+                .frame(maxWidth: .infinity)
                 .frame(height: 250)
                 .chartOverlay { proxy in
                     GeometryReader { geometry in
-                        if let selectedDate, let data = trendData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
-                            let dateX = proxy.position(forX: data.date) ?? 0
-                            popoverView(data: data)
-                                .position(x: calculatePopoverX(dateX: dateX, geometry: geometry), y: 20)
+                        ZStack(alignment: .topLeading) {
+                            if let plotFrame = proxy.plotFrame {
+                                let frame = geometry[plotFrame]
+                                ForEach(yAxisValues, id: \.self) { yValue in
+                                    if let plotY = proxy.position(forY: yValue) {
+                                        Text(compactAxisLabel(yValue * dynamicScaleFactor))
+                                            .font(.caption)
+                                            .foregroundStyle(.orange)
+                                            .fixedSize()
+                                            .position(
+                                                x: frame.maxX + ((geometry.size.width - frame.maxX) / 2),
+                                                y: frame.minY + plotY
+                                            )
+                                            .allowsHitTesting(false)
+                                    }
+                                }
+                            }
+
+                            if let selectedDate, let data = trendData.first(where: { Calendar.current.isDate($0.date, inSameDayAs: selectedDate) }) {
+                                let dateX = proxy.position(forX: data.date) ?? 0
+                                popoverView(data: data)
+                                    .position(x: calculatePopoverX(dateX: dateX, geometry: geometry), y: 20)
+                            }
                         }
                     }
                 }
@@ -208,6 +251,32 @@ struct CalorieTrendChart: View {
         let minX: CGFloat = 50
         let maxX: CGFloat = geometry.size.width - 50
         return min(max(dateX, minX), maxX)
+    }
+
+    private func niceAxisMaximum(_ value: Double) -> Double {
+        guard value.isFinite, value > 0 else { return 100 }
+        let magnitude = pow(10, floor(log10(value)))
+        let normalized = value / magnitude
+        let niceNormalized: Double
+        if normalized <= 1 {
+            niceNormalized = 1
+        } else if normalized <= 2 {
+            niceNormalized = 2
+        } else if normalized <= 5 {
+            niceNormalized = 5
+        } else {
+            niceNormalized = 10
+        }
+        return niceNormalized * magnitude
+    }
+
+    private func compactAxisLabel(_ value: Double) -> String {
+        if abs(value) >= 1_000 {
+            let thousands = value / 1_000
+            let fractionDigits = thousands.rounded() == thousands ? 0 : 1
+            return thousands.formatted(.number.precision(.fractionLength(fractionDigits))) + "k"
+        }
+        return value.formatted(.number.precision(.fractionLength(0)))
     }
     
     private func legendItem(label: String, color: Color, isLine: Bool) -> some View {

@@ -24,6 +24,7 @@ struct DayDetailView: View {
     @State private var inputErrorMessage: String? = nil
     @State private var showInputError: Bool = false
     @State private var isCalorieExpanded: Bool = false
+    @State private var dailyMemo = ""
     
     private var sleepEndRange: ClosedRange<Date> {
         let start = Calendar.current.startOfDay(for: currentData.date)
@@ -167,8 +168,7 @@ struct DayDetailView: View {
                                 showingWeightInput = true
                             }) {
                                 let weightValue = currentData.weight.map { w in
-                                    let m = Measurement(value: w, unit: UnitMass.kilograms)
-                                    return Text(m.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
+                                    Text(viewModel.formattedWeight(w))
                                 } ?? Text(String(localized: "入力する"))
                                 healthRow(icon: "scalemass.fill", title: String(localized: "体重"), value: weightValue, color: .teal)
                             }
@@ -197,12 +197,34 @@ struct DayDetailView: View {
                         }
                         .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
                     }
+
                     Text("*データは、Apple「ヘルスケア」アプリに準拠しています。\n*消費カロリーは、アクティブエネルギーと安静時消費エネルギーの合計です。")
                         .font(.caption)
                         .foregroundColor(.secondary)
+
+                    VStack(spacing: 12) {
+                        sectionHeader(String(localized: "メモ"))
+
+                        ZStack(alignment: .topLeading) {
+                            if dailyMemo.isEmpty {
+                                Text(String(localized: "この日の記録や気づきを入力"))
+                                    .foregroundColor(.secondary)
+                                    .padding(.top, 8)
+                                    .padding(.leading, 5)
+                                    .allowsHitTesting(false)
+                            }
+
+                            TextEditor(text: $dailyMemo)
+                                .scrollContentBackground(.hidden)
+                                .frame(minHeight: 140)
+                        }
+                        .padding(12)
+                        .glassEffect(in: .rect(cornerRadius: glassCornerRadius))
+                    }
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.interactively)
         }
         .navigationTitle(currentData.date.formatted(.dateTime.month().day().weekday()))
         .navigationBarTitleDisplayMode(.inline)
@@ -289,9 +311,14 @@ struct DayDetailView: View {
         }
         .onAppear {
             viewModel.loadCalorieDetails(for: currentData.date)
+            dailyMemo = viewModel.dailyMemo(for: currentData.date)
         }
         .onChange(of: currentData.date) { oldDate, newDate in
             viewModel.loadCalorieDetails(for: newDate)
+            dailyMemo = viewModel.dailyMemo(for: newDate)
+        }
+        .onChange(of: dailyMemo) { _, newValue in
+            viewModel.saveDailyMemo(newValue, for: currentData.date)
         }
     }
     
@@ -319,7 +346,12 @@ struct DayDetailView: View {
             }
             .foregroundColor(color).frame(width: 140, alignment: .leading)
             Spacer()
-            value.font(.largeTitle).foregroundColor(color).bold()
+            value
+                .font(.largeTitle)
+                .foregroundColor(color)
+                .bold()
+                .lineLimit(1)
+                .minimumScaleFactor(0.65)
         }
         .padding(16)
     }

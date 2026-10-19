@@ -221,8 +221,7 @@ struct GoalView: View {
                 // LocalizedStringKey を受け取れるように Text でラップして渡します
                 detailRow(title: String(localized: "モード"), value: Text(viewModel.goalMode.localizedName))
                 
-                let targetMass = Measurement(value: viewModel.targetWeight, unit: UnitMass.kilograms)
-                detailRow(title: String(localized: "目標体重"), value: Text(targetMass.formatted(.measurement(width: .abbreviated, usage: .personWeight))))
+                detailRow(title: String(localized: "目標体重"), value: Text(viewModel.formattedWeight(viewModel.targetWeight)))
                 
                 detailRow(title: String(localized: "開始日"), value: Text(viewModel.goalStartDate.formatted(date: .numeric, time: .omitted)))
                 
@@ -275,13 +274,11 @@ struct GoalView: View {
     }
 
     private func weightSummary(title: String, weight: Double) -> some View {
-        let measurement = Measurement(value: weight, unit: UnitMass.kilograms)
-
         return VStack(spacing: 2) {
             Text(title)
                 .font(.caption2)
                 .foregroundColor(.secondary)
-            Text(measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
+            Text(viewModel.formattedWeight(weight))
                 .font(.subheadline)
                 .bold()
         }

@@ -88,13 +88,12 @@ struct WeightTrendChart: View {
                         AxisGridLine()
                         if let kgValue = value.as(Double.self) {
                             AxisValueLabel {
-                                // 重要修正：Measurement API で軸の単位も自動化
-                                let measurement = Measurement(value: kgValue, unit: UnitMass.kilograms)
-                                Text(measurement.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
+                                Text(viewModel.formattedWeight(kgValue, includesUnit: false))
                             }
                         }
                     }
                 }
+                .frame(maxWidth: .infinity)
                 .frame(height: 250)
                 .chartOverlay { proxy in
                     GeometryReader { geometry in
@@ -126,8 +125,7 @@ struct WeightTrendChart: View {
                         .foregroundColor(gap > 0.5 ? .orange : (gap < -0.5 ? .teal : .primary))
 
                     // 重要修正：一文として構成し、Catalogに文脈を伝える
-                    let gapMeasurement = Measurement(value: abs(gap), unit: UnitMass.kilograms)
-                    let formattedGap = gapMeasurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
+                    let formattedGap = viewModel.formattedWeight(abs(gap))
                     let sign = gap >= 0 ? "+" : "-"
                     
                     Text("理論上の予測体重に対し、現在は実測値が \(sign)\(formattedGap) 乖離しています。")
@@ -157,9 +155,7 @@ struct WeightTrendChart: View {
     private func popoverValueStack(title: String, value: Double, color: Color) -> some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(title).font(.system(size: 12)).foregroundColor(color)
-            // 重要修正：ポップオーバーも Measurement で一文に
-            let m = Measurement(value: value, unit: UnitMass.kilograms)
-            Text(m.formatted(.measurement(width: .abbreviated, usage: .personWeight)))
+            Text(viewModel.formattedWeight(value))
                 .font(.system(size: 15, weight: .bold, design: .monospaced))
         }
     }

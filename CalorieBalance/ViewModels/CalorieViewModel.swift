@@ -156,7 +156,7 @@ class CalorieBalanceViewModel: ObservableObject {
         case .expired: return String(localized: "期限が過ぎました。目標を再設定しましょう！")
         case .inProgress:
             let diff = abs(targetWeight - effectiveCurrentWeight)
-            let formattedDiff = Measurement(value: diff, unit: UnitMass.kilograms).formatted(.measurement(width: .abbreviated, usage: .personWeight))
+            let formattedDiff = formattedWeight(diff)
             return String(localized: "目標まであと \(formattedDiff)")
         }
     }
@@ -601,6 +601,46 @@ class CalorieBalanceViewModel: ObservableObject {
     
     func convertToUserUnitValue(_ kgValue: Double) -> Double {
         return Measurement(value: kgValue, unit: UnitMass.kilograms).converted(to: userWeightUnit).value
+    }
+
+    /// Displays weights without losing the precision supplied by HealthKit.
+    /// The stored value is always kilograms, while the displayed value follows
+    /// the user's regional measurement system.
+    func formattedWeight(_ kgValue: Double, includesUnit: Bool = true) -> String {
+        let value = convertToUserUnitValue(kgValue)
+        let number = value.formatted(
+            .number.precision(.fractionLength(2))
+        )
+
+        return includesUnit ? "\(number) \(userWeightUnit.symbol)" : number
+    }
+
+    // MARK: - Daily memo
+
+    func dailyMemo(for date: Date) -> String {
+        UserDefaults(suiteName: "group.yuhara.CalorieBalance")?
+            .string(forKey: dailyMemoKey(for: date)) ?? ""
+    }
+
+    func saveDailyMemo(_ memo: String, for date: Date) {
+        guard let defaults = UserDefaults(suiteName: "group.yuhara.CalorieBalance") else {
+            return
+        }
+
+        let key = dailyMemoKey(for: date)
+        if memo.isEmpty {
+            defaults.removeObject(forKey: key)
+        } else {
+            defaults.set(memo, forKey: key)
+        }
+    }
+
+    private func dailyMemoKey(for date: Date) -> String {
+        let components = Calendar.current.dateComponents([.year, .month, .day], from: date)
+        let year = components.year ?? 0
+        let month = components.month ?? 0
+        let day = components.day ?? 0
+        return "dailyMemo.\(year)-\(month)-\(day)"
     }
 
     private func exportSnapshotForWidget() {

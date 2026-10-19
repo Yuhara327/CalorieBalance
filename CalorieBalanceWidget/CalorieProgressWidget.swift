@@ -121,8 +121,7 @@ struct CalorieProgressWidgetEntryView : View {
             } else if entry.goalStatus == "expired" {
                 return Text(String(localized: "期限が過ぎました。再設定しましょう"))
             } else {
-                let diffMeasurement = Measurement(value: entry.targetDiff, unit: UnitMass.kilograms)
-                let formattedDiff = diffMeasurement.formatted(.measurement(width: .abbreviated, usage: .personWeight))
+                let formattedDiff = formattedWeight(entry.targetDiff)
                 return Text("目標まであと \(formattedDiff)")
             }
         }()
@@ -134,6 +133,19 @@ struct CalorieProgressWidgetEntryView : View {
             .foregroundColor(badgeColor(for: entry.goalStatus))
             .lineLimit(1)
             .minimumScaleFactor(0.8)
+    }
+
+    private func formattedWeight(_ kgValue: Double) -> String {
+        let unit: UnitMass = switch Locale.current.measurementSystem {
+        case .us: .pounds
+        case .uk: .stones
+        default: .kilograms
+        }
+        let value = Measurement(value: kgValue, unit: UnitMass.kilograms)
+            .converted(to: unit)
+            .value
+        let number = value.formatted(.number.precision(.fractionLength(2)))
+        return "\(number) \(unit.symbol)"
     }
     
     private func ringGradient(for status: String) -> LinearGradient {
